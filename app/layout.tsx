@@ -22,7 +22,7 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body className="bg-slate-50 text-slate-800 antialiased">
         <NavBar />
-        <main className="container mx-auto px-4 py-8 max-w-6xl">{children}</main>
+        <main className="container mx-auto px-4 py-8 max-w-[1800px]">{children}</main>
       </body>
     </html>
   );

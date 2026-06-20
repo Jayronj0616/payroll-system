@@ -306,6 +306,7 @@ export default function PayrollsClient({
   const [payrollDate, setPayrollDate] = useState(entryPayrollDate);
   const [historyDateInput, setHistoryDateInput] = useState(selectedPayrollDate ?? "");
   const [isSaving, setIsSaving] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const [rows, setRows] = useState<RowState[]>(() =>
     employees.map((e) => ({
@@ -519,8 +520,29 @@ export default function PayrollsClient({
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function hasEntry(row: RowState): boolean {
+    return (
+      (parseFloat(row.days) || 0) !== 0 ||
+      (parseFloat(row.ot) || 0) !== 0 ||
+      (parseFloat(row.caLea) || 0) !== 0 ||
+      (parseFloat(row.caBitoy) || 0) !== 0
+    );
+  }
+
+  const reviewRows = useMemo(() => rows.filter(hasEntry), [rows]);
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    if (reviewRows.length === 0) {
+      toast("error", "No entries to save — fill in days, OT, or a cash advance for at least one employee.");
+      return;
+    }
+
+    setShowConfirmModal(true);
+  }
+
+  async function confirmAndSave() {
     setIsSaving(true);
 
     const entries: PayrollEntry[] = rows.map((r) => ({
@@ -543,6 +565,7 @@ export default function PayrollsClient({
       }
       toast("error", err instanceof Error ? err.message : "Failed to save payroll.");
       setIsSaving(false);
+      setShowConfirmModal(false);
     }
   }
 
@@ -554,7 +577,7 @@ export default function PayrollsClient({
   const selectedDateLabel = formatDateLabel(selectedPayrollDate);
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-[1800px] mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-slate-200 pb-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Payroll Management</h1>
@@ -1273,6 +1296,77 @@ export default function PayrollsClient({
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/50"
+            onClick={() => !isSaving && setShowConfirmModal(false)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+            <div className="px-6 py-5 border-b border-slate-200">
+              <h3 className="text-lg font-semibold text-slate-900">Confirm Payroll Save</h3>
+              <p className="text-sm text-slate-500 mt-1">
+                Review the {reviewRows.length} employee(s) with entries for{" "}
+                {formatDateLabel(payrollDate) ?? payrollDate}. Anyone not listed has nothing entered and will be
+                skipped.
+              </p>
+            </div>
+
+            <div className="overflow-y-auto px-6 py-4 flex-1">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-slate-500 uppercase text-xs tracking-wide border-b border-slate-200">
+                    <th className="py-2 pr-3">Name</th>
+                    <th className="py-2 px-3 text-right">Days</th>
+                    <th className="py-2 px-3 text-right">OT</th>
+                    <th className="py-2 px-3 text-right">CA Lea</th>
+                    <th className="py-2 px-3 text-right">CA Bitoy</th>
+                    <th className="py-2 pl-3 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {reviewRows.map((row) => (
+                    <tr key={row.id}>
+                      <td className="py-2 pr-3 font-medium text-slate-800">{row.name}</td>
+                      <td className="py-2 px-3 text-right font-mono text-slate-600">{row.days || "0"}</td>
+                      <td className="py-2 px-3 text-right font-mono text-slate-600">{row.ot || "0"}</td>
+                      <td className="py-2 px-3 text-right font-mono text-rose-600">{row.caLea || "0"}</td>
+                      <td className="py-2 px-3 text-right font-mono text-rose-600">{row.caBitoy || "0"}</td>
+                      <td
+                        className={`py-2 pl-3 text-right font-mono font-semibold ${
+                          rowTotal(row) < 0 ? "text-rose-600" : "text-slate-900"
+                        }`}
+                      >
+                        {formatCurrency(rowTotal(row))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowConfirmModal(false)}
+                disabled={isSaving}
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded-lg disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmAndSave}
+                disabled={isSaving}
+                className="px-5 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm disabled:opacity-60"
+              >
+                {isSaving ? "Saving..." : "Confirm & Save"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
