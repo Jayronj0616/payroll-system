@@ -14,6 +14,8 @@ type GroupData = {
     days_worked: number;
     overtime_hours: number;
     overtime_pay: number;
+    cash_advance_lea: number;
+    cash_advance_bitoy: number;
     total_salary: number;
   }>;
   count: number;
@@ -45,6 +47,8 @@ type RowState = {
   rate: number;
   days: string;
   ot: string;
+  caLea: string;
+  caBitoy: string;
 };
 
 function formatCurrency(value: number): string {
@@ -313,6 +317,8 @@ export default function PayrollsClient({
       rate: Number(e.daily_rate),
       days: "",
       ot: "",
+      caLea: "",
+      caBitoy: "",
     }))
   );
 
@@ -494,7 +500,9 @@ export default function PayrollsClient({
 
   function rowTotal(row: RowState): number {
     const days = parseFloat(row.days) || 0;
-    return row.rate * days + rowOtPay(row);
+    const caLea = parseFloat(row.caLea) || 0;
+    const caBitoy = parseFloat(row.caBitoy) || 0;
+    return row.rate * days + rowOtPay(row) - caLea - caBitoy;
   }
 
   function groupOvertime(group: string): number {
@@ -507,7 +515,7 @@ export default function PayrollsClient({
 
   const grandTotal = useMemo(() => rows.reduce((sum, r) => sum + rowTotal(r), 0), [rows]);
 
-  function updateRow(id: number, field: "days" | "ot", value: string) {
+  function updateRow(id: number, field: "days" | "ot" | "caLea" | "caBitoy", value: string) {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
   }
 
@@ -519,6 +527,8 @@ export default function PayrollsClient({
       employee_id: r.employee_id,
       days_worked: parseFloat(r.days) || 0,
       overtime_hours: parseFloat(r.ot) || 0,
+      cash_advance_lea: parseFloat(r.caLea) || 0,
+      cash_advance_bitoy: parseFloat(r.caBitoy) || 0,
     }));
 
     try {
@@ -803,6 +813,8 @@ export default function PayrollsClient({
                             <th className="px-6 py-4 font-semibold text-right">Daily Rate</th>
                             <th className="px-6 py-4 font-semibold text-center">Days Worked</th>
                             <th className="px-6 py-4 font-semibold text-center">Overtime Hours</th>
+                            <th className="px-6 py-4 font-semibold text-center">CA (Lea)</th>
+                            <th className="px-6 py-4 font-semibold text-center">CA (Bitoy)</th>
                             <th className="px-6 py-4 font-semibold text-right text-emerald-600">Overtime Pay</th>
                             <th className="px-6 py-4 font-semibold text-right text-indigo-600">Total Salary</th>
                           </tr>
@@ -810,7 +822,7 @@ export default function PayrollsClient({
                         <tbody className="divide-y divide-slate-100">
                           {groupRows.length === 0 ? (
                             <tr>
-                              <td colSpan={6} className="px-6 py-10 text-center text-slate-500 bg-slate-50/40">
+                              <td colSpan={8} className="px-6 py-10 text-center text-slate-500 bg-slate-50/40">
                                 No employees assigned to this group yet.
                               </td>
                             </tr>
@@ -869,6 +881,28 @@ export default function PayrollsClient({
                                     placeholder="0"
                                   />
                                 </td>
+                                <td className="px-6 py-3">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={row.caLea}
+                                    onChange={(e) => updateRow(row.id, "caLea", e.target.value)}
+                                    className="w-full rounded-md border-slate-300 border focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-3 py-2 text-center font-mono shadow-sm transition-shadow h-10 placeholder:text-slate-300"
+                                    placeholder="0"
+                                  />
+                                </td>
+                                <td className="px-6 py-3">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={row.caBitoy}
+                                    onChange={(e) => updateRow(row.id, "caBitoy", e.target.value)}
+                                    className="w-full rounded-md border-slate-300 border focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-3 py-2 text-center font-mono shadow-sm transition-shadow h-10 placeholder:text-slate-300"
+                                    placeholder="0"
+                                  />
+                                </td>
                                 <td className="px-6 py-3 text-right">
                                   <span className="font-mono font-medium text-emerald-600">
                                     {formatCurrency(rowOtPay(row))}
@@ -876,7 +910,7 @@ export default function PayrollsClient({
                                 </td>
                                 <td className="px-6 py-3 text-right">
                                   <span
-                                    className={`font-mono font-bold ${isMf ? "text-amber-700" : "text-sky-700"}`}
+                                    className={`font-mono font-bold ${rowTotal(row) < 0 ? "text-rose-600" : isMf ? "text-amber-700" : "text-sky-700"}`}
                                   >
                                     {formatCurrency(rowTotal(row))}
                                   </span>
@@ -890,7 +924,7 @@ export default function PayrollsClient({
                         >
                           <tr>
                             <td
-                              colSpan={5}
+                              colSpan={7}
                               className={`px-6 py-5 text-right font-bold tracking-wide uppercase text-sm ${
                                 isMf ? "text-amber-900" : "text-sky-900"
                               }`}
@@ -1168,6 +1202,8 @@ export default function PayrollsClient({
                             <th className="px-6 py-4 font-semibold text-right">Daily Rate</th>
                             <th className="px-6 py-4 font-semibold text-right">Days Worked</th>
                             <th className="px-6 py-4 font-semibold text-right">OT Hours</th>
+                            <th className="px-6 py-4 font-semibold text-right">CA (Lea)</th>
+                            <th className="px-6 py-4 font-semibold text-right">CA (Bitoy)</th>
                             <th className="px-6 py-4 font-semibold text-right text-emerald-600">OT Pay</th>
                             <th className="px-6 py-4 font-semibold text-right text-indigo-600">Total Salary</th>
                           </tr>
@@ -1175,7 +1211,7 @@ export default function PayrollsClient({
                         <tbody className="divide-y divide-slate-100">
                           {groupData.records.length === 0 ? (
                             <tr>
-                              <td colSpan={7} className="px-6 py-10 text-center text-slate-500 bg-slate-50/40">
+                              <td colSpan={9} className="px-6 py-10 text-center text-slate-500 bg-slate-50/40">
                                 No records saved for {group} on this payroll date.
                               </td>
                             </tr>
@@ -1201,12 +1237,26 @@ export default function PayrollsClient({
                                   <td className="px-6 py-4 text-right text-slate-700 font-mono">
                                     {Number(payroll.overtime_hours).toFixed(2)}
                                   </td>
+                                  <td className="px-6 py-4 text-right text-rose-600 font-mono">
+                                    {Number(payroll.cash_advance_lea ?? 0) > 0
+                                      ? `-${Number(payroll.cash_advance_lea).toFixed(2)}`
+                                      : "0.00"}
+                                  </td>
+                                  <td className="px-6 py-4 text-right text-rose-600 font-mono">
+                                    {Number(payroll.cash_advance_bitoy ?? 0) > 0
+                                      ? `-${Number(payroll.cash_advance_bitoy).toFixed(2)}`
+                                      : "0.00"}
+                                  </td>
                                   <td className="px-6 py-4 text-right text-emerald-600 font-medium font-mono">
                                     +{Number(payroll.overtime_pay).toFixed(2)}
                                   </td>
                                   <td
                                     className={`px-6 py-4 text-right font-bold font-mono ${
-                                      isMf ? "text-amber-700" : "text-sky-700"
+                                      Number(payroll.total_salary) < 0
+                                        ? "text-rose-600"
+                                        : isMf
+                                        ? "text-amber-700"
+                                        : "text-sky-700"
                                     }`}
                                   >
                                     {Number(payroll.total_salary).toFixed(2)}

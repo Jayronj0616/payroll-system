@@ -80,6 +80,8 @@ export type Payroll = {
   days_worked: number;
   overtime_hours: number;
   overtime_pay: number;
+  cash_advance_lea: number;
+  cash_advance_bitoy: number;
   total_salary: number;
   created_at?: string;
   updated_at?: string;
@@ -112,11 +114,17 @@ export function sortEmployees<T extends { name: string; payroll_group: string | 
  *   overtime_pay  = overtime_rate * overtime_hours
  *   total_salary  = base_salary + overtime_pay
  */
-export function calculatePayroll(dailyRate: number, daysWorked: number, overtimeHours: number) {
+export function calculatePayroll(
+  dailyRate: number,
+  daysWorked: number,
+  overtimeHours: number,
+  cashAdvanceLea: number = 0,
+  cashAdvanceBitoy: number = 0
+) {
   const baseSalary = dailyRate * daysWorked;
   const overtimeRate = dailyRate / 8;
   const overtimePay = overtimeRate * overtimeHours;
-  const totalSalary = baseSalary + overtimePay;
+  const totalSalary = baseSalary + overtimePay - cashAdvanceLea - cashAdvanceBitoy;
 
   return { overtimePay, totalSalary };
 }

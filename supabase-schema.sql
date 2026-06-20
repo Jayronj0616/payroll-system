@@ -18,6 +18,8 @@ create table if not exists payrolls (
   days_worked numeric(5, 2) not null,
   overtime_hours numeric(5, 2) not null,
   overtime_pay numeric(10, 2) not null,
+  cash_advance_lea numeric(10, 2) not null default 0,
+  cash_advance_bitoy numeric(10, 2) not null default 0,
   total_salary numeric(12, 2) not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

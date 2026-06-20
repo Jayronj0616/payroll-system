@@ -9,6 +9,8 @@ export type PayrollEntry = {
   employee_id: number;
   days_worked: number;
   overtime_hours: number;
+  cash_advance_lea: number;
+  cash_advance_bitoy: number;
 };
 
 export async function savePayrolls(payrollDate: string, entries: PayrollEntry[]) {
@@ -35,8 +37,10 @@ export async function savePayrolls(payrollDate: string, entries: PayrollEntry[])
   for (const entryData of entries) {
     const daysWorked = Number(entryData.days_worked || 0);
     const overtimeHours = Number(entryData.overtime_hours || 0);
+    const cashAdvanceLea = Number(entryData.cash_advance_lea || 0);
+    const cashAdvanceBitoy = Number(entryData.cash_advance_bitoy || 0);
 
-    if (daysWorked === 0 && overtimeHours === 0) {
+    if (daysWorked === 0 && overtimeHours === 0 && cashAdvanceLea === 0 && cashAdvanceBitoy === 0) {
       continue;
     }
 
@@ -46,7 +50,13 @@ export async function savePayrolls(payrollDate: string, entries: PayrollEntry[])
     }
 
     const dailyRate = Number(employee.daily_rate);
-    const { overtimePay, totalSalary } = calculatePayroll(dailyRate, daysWorked, overtimeHours);
+    const { overtimePay, totalSalary } = calculatePayroll(
+      dailyRate,
+      daysWorked,
+      overtimeHours,
+      cashAdvanceLea,
+      cashAdvanceBitoy
+    );
 
     // Mirrors Payroll::updateOrCreate(['employee_id', 'payroll_date'], [...])
     const { data: existing } = await supabase
@@ -62,6 +72,8 @@ export async function savePayrolls(payrollDate: string, entries: PayrollEntry[])
       days_worked: daysWorked,
       overtime_hours: overtimeHours,
       overtime_pay: overtimePay,
+      cash_advance_lea: cashAdvanceLea,
+      cash_advance_bitoy: cashAdvanceBitoy,
       total_salary: totalSalary,
     };
 
