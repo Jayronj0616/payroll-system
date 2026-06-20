@@ -206,8 +206,8 @@ function extractCompactNumberPair(
   if (numbers.length < 2) return null;
 
   return {
-    daysWorked: parseFloat(numbers[0]),
-    overtimeHours: parseFloat(numbers[1]),
+    daysWorked: parseFloat(numbers[0]!),
+    overtimeHours: parseFloat(numbers[1]!),
   };
 }
 
