@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: var(--font-inter), "Inter", sans-serif;
+}
+
+[x-cloak] {
+  display: none !important;
+}
