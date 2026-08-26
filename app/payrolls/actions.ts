@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { requireSession } from "@/lib/auth";
 import { calculatePayroll } from "@/lib/employee";
 
 export type PayrollEntry = {
@@ -14,6 +15,8 @@ export type PayrollEntry = {
 };
 
 export async function savePayrolls(payrollDate: string, entries: PayrollEntry[]) {
+  const session = await requireSession();
+
   if (!payrollDate) {
     throw new Error("payroll_date is required.");
   }
@@ -21,9 +24,12 @@ export async function savePayrolls(payrollDate: string, entries: PayrollEntry[])
   const supabase = getSupabaseServerClient();
 
   const employeeIds = entries.map((e) => e.employee_id);
+  // Scoped to user_id: even if entries somehow referenced another user's
+  // employee id, it simply won't be found here and gets skipped below.
   const { data: employees, error: employeesError } = await supabase
     .from("employees")
     .select("id, daily_rate")
+    .eq("user_id", session.userId)
     .in("id", employeeIds);
 
   if (employeesError) {
@@ -64,9 +70,11 @@ export async function savePayrolls(payrollDate: string, entries: PayrollEntry[])
       .select("id")
       .eq("employee_id", employee.id)
       .eq("payroll_date", payrollDate)
+      .eq("user_id", session.userId)
       .maybeSingle();
 
     const payload = {
+      user_id: session.userId,
       employee_id: employee.id,
       payroll_date: payrollDate,
       days_worked: daysWorked,
@@ -78,7 +86,11 @@ export async function savePayrolls(payrollDate: string, entries: PayrollEntry[])
     };
 
     if (existing) {
-      const { error } = await supabase.from("payrolls").update(payload).eq("id", existing.id);
+      const { error } = await supabase
+        .from("payrolls")
+        .update(payload)
+        .eq("id", existing.id)
+        .eq("user_id", session.userId);
       if (error) throw new Error(error.message);
     } else {
       const { error } = await supabase.from("payrolls").insert(payload);

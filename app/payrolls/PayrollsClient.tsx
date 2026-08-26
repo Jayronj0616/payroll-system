@@ -25,6 +25,7 @@ type GroupData = {
 
 type Props = {
   employees: Employee[];
+  allEmployees: Employee[];
   employeeGroups: string[];
   payrollsByGroup: Record<string, GroupData>;
   selectedPayrollDate: string | null;
@@ -294,6 +295,7 @@ function toast(icon: "success" | "error", title: string) {
 
 export default function PayrollsClient({
   employees,
+  allEmployees,
   employeeGroups,
   payrollsByGroup,
   selectedPayrollDate,
@@ -1164,7 +1166,10 @@ export default function PayrollsClient({
               {employeeGroups.map((group) => {
                 const groupData = payrollsByGroup[group];
                 const isMf = group === GROUP_MF;
-                const employeeById = new Map(employees.map((e) => [e.id, e]));
+                // Uses allEmployees (not the active-only `employees` prop) so
+                // history rows for a now-inactive employee still resolve a
+                // name/rate instead of going blank.
+                const employeeById = new Map(allEmployees.map((e) => [e.id, e]));
 
                 return (
                   <section

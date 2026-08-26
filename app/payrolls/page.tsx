@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { requireSession } from "@/lib/auth";
 import {
   Employee,
   Payroll,
@@ -23,20 +24,28 @@ export default async function PayrollsPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const session = await requireSession();
   const supabase = getSupabaseServerClient();
 
   const { data: employeesData, error: employeesError } = await supabase
     .from("employees")
-    .select("*");
+    .select("*")
+    .eq("user_id", session.userId);
   if (employeesError) throw new Error(employeesError.message);
 
-  const employees = sortEmployees((employeesData ?? []) as Employee[]);
-  const employeeById = new Map(employees.map((e) => [e.id, e]));
+  // allEmployees includes inactive employees — needed so payroll history
+  // (Past Records) can still resolve names/rates for anyone deactivated
+  // after their payroll record was saved. Compute Entry only ever gets
+  // the active subset below.
+  const allEmployees = sortEmployees((employeesData ?? []) as Employee[]);
+  const employees = allEmployees.filter((e) => e.is_active);
+  const employeeById = new Map(allEmployees.map((e) => [e.id, e]));
 
-  // Mirrors Payroll::query()->max('payroll_date')
+  // Mirrors Payroll::query()->max('payroll_date'), scoped to this account.
   const { data: latestRow } = await supabase
     .from("payrolls")
     .select("payroll_date")
+    .eq("user_id", session.userId)
     .order("payroll_date", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -49,6 +58,7 @@ export default async function PayrollsPage({
     const { data: payrollsData, error: payrollsError } = await supabase
       .from("payrolls")
       .select("*")
+      .eq("user_id", session.userId)
       .eq("payroll_date", selectedPayrollDate)
       .order("created_at", { ascending: false });
     if (payrollsError) throw new Error(payrollsError.message);
@@ -57,6 +67,7 @@ export default async function PayrollsPage({
     const { data: payrollsData, error: payrollsError } = await supabase
       .from("payrolls")
       .select("*")
+      .eq("user_id", session.userId)
       .order("payroll_date", { ascending: false })
       .order("created_at", { ascending: false });
     if (payrollsError) throw new Error(payrollsError.message);
@@ -111,6 +122,7 @@ export default async function PayrollsPage({
       </Suspense>
       <PayrollsClient
         employees={employees}
+        allEmployees={allEmployees}
         employeeGroups={PAYROLL_GROUPS as unknown as string[]}
         payrollsByGroup={payrollsByGroup as any}
         selectedPayrollDate={selectedPayrollDate}

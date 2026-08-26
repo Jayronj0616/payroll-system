@@ -9,7 +9,7 @@ import {
   PayrollGroup,
   suggestedPayrollGroup,
 } from "@/lib/employee";
-import { createEmployee, updateEmployee, deleteEmployee } from "./actions";
+import { createEmployee, updateEmployee, deactivateEmployee, activateEmployee } from "./actions";
 
 type Props = {
   employees: Employee[];
@@ -39,6 +39,13 @@ export default function EmployeesClient({ employees }: Props) {
   const [modal, setModal] = useState<ModalState>(EMPTY_MODAL);
   const [errors, setErrors] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
+  const [statusTab, setStatusTab] = useState<"active" | "inactive">("active");
+
+  const visibleEmployees = employees.filter((e) =>
+    statusTab === "active" ? e.is_active : !e.is_active
+  );
+  const activeCount = employees.filter((e) => e.is_active).length;
+  const inactiveCount = employees.length - activeCount;
 
   function openCreate() {
     setErrors([]);
@@ -87,17 +94,19 @@ export default function EmployeesClient({ employees }: Props) {
     });
   }
 
-  function confirmDelete(employee: Employee) {
+  function confirmToggleStatus(employee: Employee) {
+    const isDeactivating = employee.is_active;
+
     Swal.fire({
-      title: "Delete Employee?",
-      html: `Are you sure you want to delete <span class="font-bold text-slate-900">${escapeHtml(
-        employee.name
-      )}</span>?<br><br><span class="text-sm text-slate-500">This action cannot be undone and may affect associated payroll records.</span>`,
+      title: isDeactivating ? "Deactivate Employee?" : "Activate Employee?",
+      html: isDeactivating
+        ? `Are you sure you want to deactivate <span class="font-bold text-slate-900">${escapeHtml(employee.name)}</span>?<br><br><span class="text-sm text-slate-500">They will be hidden from Compute Entry and the active list, but their payroll history is kept and they can be reactivated anytime.</span>`
+        : `Are you sure you want to reactivate <span class="font-bold text-slate-900">${escapeHtml(employee.name)}</span>?<br><br><span class="text-sm text-slate-500">They will reappear in Compute Entry and the active list.</span>`,
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#ef4444",
+      confirmButtonColor: isDeactivating ? "#ef4444" : "#4f46e5",
       cancelButtonColor: "#e2e8f0",
-      confirmButtonText: "Yes, delete it!",
+      confirmButtonText: isDeactivating ? "Yes, deactivate" : "Yes, activate",
       cancelButtonText: '<span class="text-slate-700">Cancel</span>',
       customClass: {
         popup: "rounded-xl border border-slate-100 shadow-xl",
@@ -108,7 +117,11 @@ export default function EmployeesClient({ employees }: Props) {
     }).then((result) => {
       if (result.isConfirmed) {
         startTransition(() => {
-          deleteEmployee(employee.id);
+          if (isDeactivating) {
+            deactivateEmployee(employee.id);
+          } else {
+            activateEmployee(employee.id);
+          }
         });
       }
     });
@@ -146,6 +159,31 @@ export default function EmployeesClient({ employees }: Props) {
         </div>
       )}
 
+      <div className="flex p-1 space-x-1 bg-slate-100/80 rounded-xl border border-slate-200 w-fit mb-4">
+        <button
+          type="button"
+          onClick={() => setStatusTab("active")}
+          className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all outline-none ${
+            statusTab === "active"
+              ? "bg-white shadow text-indigo-700"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+          }`}
+        >
+          Active ({activeCount})
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusTab("inactive")}
+          className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all outline-none ${
+            statusTab === "inactive"
+              ? "bg-white shadow text-indigo-700"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+          }`}
+        >
+          Inactive ({inactiveCount})
+        </button>
+      </div>
+
       <div className="bg-white shadow-sm border border-slate-200 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse whitespace-nowrap">
@@ -159,7 +197,7 @@ export default function EmployeesClient({ employees }: Props) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {employees.length === 0 ? (
+              {visibleEmployees.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-slate-500 bg-slate-50/50">
                     <div className="flex flex-col items-center">
@@ -176,19 +214,23 @@ export default function EmployeesClient({ employees }: Props) {
                           d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
                         />
                       </svg>
-                      <p className="text-lg">No employees found.</p>
-                      <button
-                        type="button"
-                        onClick={openCreate}
-                        className="text-indigo-600 mt-2 hover:underline font-medium"
-                      >
-                        Add the first one
-                      </button>
+                      <p className="text-lg">
+                        {statusTab === "active" ? "No active employees found." : "No inactive employees."}
+                      </p>
+                      {statusTab === "active" && (
+                        <button
+                          type="button"
+                          onClick={openCreate}
+                          className="text-indigo-600 mt-2 hover:underline font-medium"
+                        >
+                          Add the first one
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
               ) : (
-                employees.map((employee) => {
+                visibleEmployees.map((employee) => {
                   const isMf = employee.payroll_group === "MF";
                   return (
                     <tr key={employee.id} className="hover:bg-slate-50 transition-colors">
@@ -224,10 +266,14 @@ export default function EmployeesClient({ employees }: Props) {
                         </button>
                         <button
                           type="button"
-                          onClick={() => confirmDelete(employee)}
-                          className="text-rose-500 hover:text-rose-700 font-medium transition-colors"
+                          onClick={() => confirmToggleStatus(employee)}
+                          className={
+                            employee.is_active
+                              ? "text-rose-500 hover:text-rose-700 font-medium transition-colors"
+                              : "text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+                          }
                         >
-                          Delete
+                          {employee.is_active ? "Deactivate" : "Activate"}
                         </button>
                       </td>
                     </tr>

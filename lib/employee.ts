@@ -69,6 +69,7 @@ export type Employee = {
   voice_code: string | null;
   daily_rate: number;
   payroll_group: PayrollGroup;
+  is_active: boolean;
   created_at?: string;
   updated_at?: string;
 };
