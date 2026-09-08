@@ -70,6 +70,48 @@ See `HANDOFF.md` in this same directory for how to get filesystem access to this
 
 - [ ] **Owner-only Accounts management page** (`/accounts` — linked from NavBar but returns 404 right now). Needs: list admins, create admin (username + password, hashed server-side), deactivate/reactivate.
 
+## In progress — Landing page demo ("Try Demo") — started 2026-09-08
+
+Goal: a "Try Demo" button on the landing page that logs a visitor straight into a shared, seeded demo account and runs an intro.js-driven tour across Dashboard → Employees → Payrolls, including the voice-entry feature. Tour only *shows* the Add Employee / Compute Entry UI — does not walk through actually submitting anything. Demo data resets on a schedule via cron since the demo account is shared across all visitors (accepted tradeoff — visitors can edit/delete seed data between resets).
+
+Decisions locked in with Jay Ron:
+- [ ] Demo auth: reuse the existing `login()` server action with hardcoded demo credentials (no parallel auth path) — role `admin`, not `owner`, so it can't see cross-account data.
+- [ ] Shared single demo account (not per-session), reset via scheduled job — Option A, chosen over per-session accounts or a read-only tour.
+- [ ] Tour library: intro.js (`intro.js-react`), driven by a `?tour=1` query param on `/dashboard`, persisted across route changes via `sessionStorage` since intro.js has no built-in cross-route continuity in App Router.
+- [ ] Reset cron interval: every 6 hours.
+- [ ] Cron endpoint auth: `CRON_SECRET` env var, checked against the `Authorization` header in the route handler (this is also what Vercel's scheduled cron sends automatically when the env var is set) — unauthenticated hits to the route must get a 401, not a reset.
+- [ ] Seed data: dummy placeholder names ("Employee 1", "Employee 2", etc.) — not realistic names.
+
+All open questions resolved — ready to build.
+
+### Plan / build checklist
+
+- [x] **Demo user + seed data** — `supabase-migration-003-demo-seed.sql` written. Demo user `demouser1` (role admin), 7 employees (Employee 1-7, mixed active/inactive, 3 payroll groups, voice codes demo1-7), 2 payroll runs per active employee. Delete-then-insert pattern for employees/payrolls, reusable by the reset cron.
+  - [ ] Jay Ron to generate bcrypt hash for `demopassword1` and paste into the SQL file, then run it in Supabase SQL Editor.
+- [ ] **Landing page button**
+  - [ ] Add "Try Demo" button next to "Sign In" on `app/page.tsx`.
+  - [ ] Wire it to submit the existing `login` action with demo credentials held server-side (not visible/typed by the visitor).
+  - [ ] On success, land on `/dashboard?tour=1` (same query-param pattern as the existing `?login=1`).
+- [ ] **Demo mode indicator**
+  - [ ] Persistent "Demo Mode" banner shown while `?tour=1` / demo session is active.
+- [ ] **intro.js tour**
+  - [ ] Install `intro.js` + `intro.js-react`.
+  - [ ] Dashboard step(s): explain the summary cards.
+  - [ ] Employees step(s): point at the table and the Add Employee button, explain without opening the modal.
+  - [ ] Payrolls step(s): Compute Entry tab — point at voice-entry button, explain it; Past Records tab — explain history view.
+  - [ ] Cross-page step continuity via `sessionStorage` (dashboard → employees → payrolls).
+- [ ] **Reset job**
+  - [ ] `/api/cron/reset-demo` route: deletes all `employees`/`payrolls` rows for the demo `user_id`, re-inserts the fixed seed set.
+  - [ ] Protect route with `CRON_SECRET` header/token check.
+  - [ ] `vercel.json` cron entry to hit the route on a schedule.
+- [ ] **Manual verification (not yet done)**
+  - [ ] "Try Demo" logs in and lands on dashboard with tour auto-starting.
+  - [ ] Tour correctly walks all three pages without breaking on navigation.
+  - [ ] Demo account data isolated from real accounts (no leakage either direction).
+  - [ ] Reset cron actually restores seed data on schedule.
+
+
+
 ## Needs verification / open items (carried over, unchanged by this session)
 
 - [ ] Voice commands: confirm still working in Chrome/Edge on the deployed Vercel URL (Web Speech API needs HTTPS/secure context)
