@@ -156,7 +156,7 @@ Decisions locked in with Jay Ron:
 - [ ] Demo auth: reuse the existing `login()` server action with hardcoded demo credentials (no parallel auth path) — role `admin`, not `owner`, so it can't see cross-account data.
 - [ ] Shared single demo account (not per-session), reset via scheduled job — Option A, chosen over per-session accounts or a read-only tour.
 - [ ] Tour library: intro.js (`intro.js-react`), driven by a `?tour=1` query param on `/dashboard`, persisted across route changes via `sessionStorage` since intro.js has no built-in cross-route continuity in App Router.
-- [ ] Reset cron interval: every 6 hours.
+- [x] Reset cron interval: changed to once daily (3am UTC) 2026-09-09 — Vercel Hobby plan rejects any cron more frequent than once/day at deploy time, the original every-6-hours schedule would have failed the build.
 - [ ] Cron endpoint auth: `CRON_SECRET` env var, checked against the `Authorization` header in the route handler (this is also what Vercel's scheduled cron sends automatically when the env var is set) — unauthenticated hits to the route must get a 401, not a reset.
 - [ ] Seed data: dummy placeholder names ("Employee 1", "Employee 2", etc.) — not realistic names.
 
