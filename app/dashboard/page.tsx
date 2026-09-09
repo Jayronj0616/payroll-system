@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
+import DemoTour from "@/components/DemoTour";
+import { DEMO_USERNAME } from "@/lib/demo";
 
 export const dynamic = "force-dynamic";
 
@@ -19,16 +21,23 @@ export default async function DashboardPage() {
     redirect("/");
   }
 
-  const supabase = getSupabaseServerClient();
-  const isOwner = session.role === "owner";
-
-  let employeesQuery = supabase.from("employees").select("id, is_active, payroll_group, user_id");
-  let payrollsQuery = supabase.from("payrolls").select("total_salary, payroll_date, user_id");
-
-  if (!isOwner) {
-    employeesQuery = employeesQuery.eq("user_id", session.userId);
-    payrollsQuery = payrollsQuery.eq("user_id", session.userId);
+  // Owner/superadmin sessions have no account_id and no tenant data —
+  // by construction they never query employees/payrolls. Send them
+  // straight to account management instead.
+  if (session.accountId === null) {
+    redirect("/accounts");
   }
+
+  const supabase = getSupabaseServerClient();
+
+  const employeesQuery = supabase
+    .from("employees")
+    .select("id, is_active, payroll_group")
+    .eq("account_id", session.accountId);
+  const payrollsQuery = supabase
+    .from("payrolls")
+    .select("total_salary, payroll_date")
+    .eq("account_id", session.accountId);
 
   const [{ data: employees, error: employeesError }, { data: payrolls, error: payrollsError }] =
     await Promise.all([employeesQuery, payrollsQuery]);
@@ -57,8 +66,6 @@ export default async function DashboardPage() {
         year: "numeric",
       })
     : null;
-
-  const distinctAdmins = isOwner ? new Set((employees ?? []).map((e) => e.user_id)).size : null;
 
   type CardTheme = {
     border: string;
@@ -91,12 +98,6 @@ export default async function DashboardPage() {
       iconBg: "bg-amber-50",
       iconColor: "text-amber-600",
       valueColor: "text-amber-700",
-    },
-    violet: {
-      border: "border-violet-200",
-      iconBg: "bg-violet-50",
-      iconColor: "text-violet-600",
-      valueColor: "text-violet-700",
     },
   };
 
@@ -133,14 +134,6 @@ export default async function DashboardPage() {
         d="M8 7V3m8 4V3m-9 8h10m-11 9h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v11a2 2 0 002 2z"
       />
     ),
-    building: (
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3m8-14h.01M11 11h.01M11 15h.01M7 7h.01M7 11h.01M7 15h.01M15 7h.01M15 11h.01M15 15h.01"
-      />
-    ),
   };
 
   const cards: Array<{
@@ -167,29 +160,18 @@ export default async function DashboardPage() {
     },
   ];
 
-  if (isOwner && distinctAdmins !== null) {
-    cards.push({
-      label: "Admin accounts with employees",
-      value: String(distinctAdmins),
-      theme: "violet",
-      icon: "building",
-    });
-  }
-
   return (
     <div>
       <div className="mb-6 pb-4 border-b border-slate-200">
         <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
-          {isOwner ? "Dashboard" : `Welcome back, ${session.username}`}
+          {`Welcome back, ${session.username}`}
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          {isOwner
-            ? "Totals across every account."
-            : "Totals for your own employees and payroll runs."}
+          Totals for your own employees and payroll runs.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div id="tour-dashboard-cards" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((card) => {
           const theme = THEME[card.theme];
           return (
@@ -216,7 +198,7 @@ export default async function DashboardPage() {
         })}
       </div>
 
-      <div className="mt-8 flex gap-3">
+      <div id="tour-dashboard-actions" className="mt-8 flex gap-3">
         <a
           href="/payrolls"
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-colors flex items-center gap-2"
@@ -246,6 +228,26 @@ export default async function DashboardPage() {
           Manage Employees
         </a>
       </div>
+
+      {session.username === DEMO_USERNAME && (
+        <DemoTour
+          page="dashboard"
+          nextPath="/employees"
+          nextStage="employees"
+          steps={[
+            {
+              element: "#tour-dashboard-cards",
+              intro: "Your employee counts, salaries, and latest payroll run at a glance.",
+              position: "bottom",
+            },
+            {
+              element: "#tour-dashboard-actions",
+              intro: "Jump into Payroll or Employees from here.",
+              position: "top",
+            },
+          ]}
+        />
+      )}
     </div>
   );
 }

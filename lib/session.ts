@@ -3,12 +3,15 @@
 // middleware.ts (Edge runtime) and in Server Actions/Components (Node runtime)
 // without needing two implementations.
 
-export type SessionRole = "owner" | "admin";
+export type SessionRole = "owner" | "admin" | "staff";
 
 export type SessionPayload = {
   userId: number;
   username: string;
   role: SessionRole;
+  // null for owner/superadmin sessions — a superadmin has no tenant and
+  // must never be used to scope a query against employees/payrolls.
+  accountId: number | null;
 };
 
 export const SESSION_COOKIE_NAME = "session";

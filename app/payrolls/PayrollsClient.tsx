@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
-import { Employee, GROUP_MF } from "@/lib/employee";
+import { Employee, PayrollGroup, groupColor } from "@/lib/employee";
 import { savePayrolls, PayrollEntry } from "./actions";
+import DemoTour from "@/components/DemoTour";
 
 type GroupData = {
   records: Array<{
@@ -14,8 +15,7 @@ type GroupData = {
     days_worked: number;
     overtime_hours: number;
     overtime_pay: number;
-    cash_advance_lea: number;
-    cash_advance_bitoy: number;
+    cash_advance: number;
     total_salary: number;
   }>;
   count: number;
@@ -26,17 +26,18 @@ type GroupData = {
 type Props = {
   employees: Employee[];
   allEmployees: Employee[];
-  employeeGroups: string[];
-  payrollsByGroup: Record<string, GroupData>;
+  groups: PayrollGroup[];
+  payrollsByGroup: Record<number, GroupData>;
   selectedPayrollDate: string | null;
   entryPayrollDate: string;
   historySummary: {
     record_count: number;
     overtime_pay: number;
     total_salary: number;
-    group_totals: Record<string, number>;
+    group_totals: Record<number, number>;
   };
   initialTab: "compute" | "history";
+  isDemo?: boolean;
 };
 
 type RowState = {
@@ -44,12 +45,11 @@ type RowState = {
   employee_id: number;
   name: string;
   voiceCode: string | null;
-  group: string;
+  groupId: number;
   rate: number;
   days: string;
   ot: string;
-  caLea: string;
-  caBitoy: string;
+  ca: string;
 };
 
 function formatCurrency(value: number): string {
@@ -296,12 +296,13 @@ function toast(icon: "success" | "error", title: string) {
 export default function PayrollsClient({
   employees,
   allEmployees,
-  employeeGroups,
+  groups,
   payrollsByGroup,
   selectedPayrollDate,
   entryPayrollDate,
   historySummary,
   initialTab,
+  isDemo,
 }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"compute" | "history">(initialTab);
@@ -316,12 +317,11 @@ export default function PayrollsClient({
       employee_id: e.id,
       name: e.name,
       voiceCode: e.voice_code,
-      group: e.payroll_group,
+      groupId: e.payroll_group_id,
       rate: Number(e.daily_rate),
       days: "",
       ot: "",
-      caLea: "",
-      caBitoy: "",
+      ca: "",
     }))
   );
 
@@ -492,8 +492,8 @@ export default function PayrollsClient({
     }
   }
 
-  function getEmployeesByGroup(group: string) {
-    return rows.filter((r) => r.group === group);
+  function getEmployeesByGroup(groupId: number) {
+    return rows.filter((r) => r.groupId === groupId);
   }
 
   function rowOtPay(row: RowState): number {
@@ -503,22 +503,21 @@ export default function PayrollsClient({
 
   function rowTotal(row: RowState): number {
     const days = parseFloat(row.days) || 0;
-    const caLea = parseFloat(row.caLea) || 0;
-    const caBitoy = parseFloat(row.caBitoy) || 0;
-    return row.rate * days + rowOtPay(row) - caLea - caBitoy;
+    const ca = parseFloat(row.ca) || 0;
+    return row.rate * days + rowOtPay(row) - ca;
   }
 
-  function groupOvertime(group: string): number {
-    return getEmployeesByGroup(group).reduce((sum, r) => sum + rowOtPay(r), 0);
+  function groupOvertime(groupId: number): number {
+    return getEmployeesByGroup(groupId).reduce((sum, r) => sum + rowOtPay(r), 0);
   }
 
-  function groupTotal(group: string): number {
-    return getEmployeesByGroup(group).reduce((sum, r) => sum + rowTotal(r), 0);
+  function groupTotal(groupId: number): number {
+    return getEmployeesByGroup(groupId).reduce((sum, r) => sum + rowTotal(r), 0);
   }
 
   const grandTotal = useMemo(() => rows.reduce((sum, r) => sum + rowTotal(r), 0), [rows]);
 
-  function updateRow(id: number, field: "days" | "ot" | "caLea" | "caBitoy", value: string) {
+  function updateRow(id: number, field: "days" | "ot" | "ca", value: string) {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
   }
 
@@ -526,8 +525,7 @@ export default function PayrollsClient({
     return (
       (parseFloat(row.days) || 0) !== 0 ||
       (parseFloat(row.ot) || 0) !== 0 ||
-      (parseFloat(row.caLea) || 0) !== 0 ||
-      (parseFloat(row.caBitoy) || 0) !== 0
+      (parseFloat(row.ca) || 0) !== 0
     );
   }
 
@@ -551,8 +549,7 @@ export default function PayrollsClient({
       employee_id: r.employee_id,
       days_worked: parseFloat(r.days) || 0,
       overtime_hours: parseFloat(r.ot) || 0,
-      cash_advance_lea: parseFloat(r.caLea) || 0,
-      cash_advance_bitoy: parseFloat(r.caBitoy) || 0,
+      cash_advance: parseFloat(r.ca) || 0,
     }));
 
     try {
@@ -590,6 +587,7 @@ export default function PayrollsClient({
 
         <div className="flex p-1 space-x-1 bg-slate-100/80 rounded-xl border border-slate-200">
           <button
+            id="tour-compute-tab"
             onClick={() => setActiveTab("compute")}
             className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 outline-none ${
               activeTab === "compute"
@@ -608,6 +606,7 @@ export default function PayrollsClient({
             Compute Entry
           </button>
           <button
+            id="tour-history-tab"
             onClick={() => setActiveTab("history")}
             className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 outline-none ${
               activeTab === "history"
@@ -650,23 +649,19 @@ export default function PayrollsClient({
                 </p>
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm border border-sky-200 p-5">
-                <div className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-sky-100 text-sky-700">
-                  BASE 3
-                </div>
-                <p className="text-sm font-medium text-slate-500 mt-3">Live Salary Total</p>
-                <p className="text-2xl font-bold text-sky-700 mt-1">{formatCurrency(groupTotal("BASE 3"))}</p>
-                <p className="text-xs text-slate-500 mt-2">{getEmployeesByGroup("BASE 3").length} employee(s)</p>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-sm border border-amber-200 p-5">
-                <div className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-amber-100 text-amber-700">
-                  MF
-                </div>
-                <p className="text-sm font-medium text-slate-500 mt-3">Live Salary Total</p>
-                <p className="text-2xl font-bold text-amber-700 mt-1">{formatCurrency(groupTotal("MF"))}</p>
-                <p className="text-xs text-slate-500 mt-2">{getEmployeesByGroup("MF").length} employee(s)</p>
-              </div>
+              {groups.map((group) => {
+                const color = groupColor(groups, group);
+                return (
+                  <div key={group.id} className={`bg-white rounded-xl shadow-sm border ${color.border} p-5`}>
+                    <div className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${color.badgeBg} ${color.badgeText}`}>
+                      {group.name}
+                    </div>
+                    <p className="text-sm font-medium text-slate-500 mt-3">Live Salary Total</p>
+                    <p className={`text-2xl font-bold mt-1 ${color.solidText}`}>{formatCurrency(groupTotal(group.id))}</p>
+                    <p className="text-xs text-slate-500 mt-2">{getEmployeesByGroup(group.id).length} employee(s)</p>
+                  </div>
+                );
+              })}
 
               <div className="bg-indigo-50 rounded-xl shadow-sm border border-indigo-200 p-5">
                 <p className="text-sm font-medium text-indigo-700">Overall Payroll Total</p>
@@ -781,33 +776,25 @@ export default function PayrollsClient({
             </div>
 
             <div className="space-y-6">
-              {employeeGroups.map((group) => {
-                const groupRows = getEmployeesByGroup(group);
-                const isMf = group === GROUP_MF;
+              {groups.map((group) => {
+                const groupRows = getEmployeesByGroup(group.id);
+                const color = groupColor(groups, group);
                 return (
                   <section
-                    key={group}
-                    className={`bg-white rounded-xl shadow-sm border overflow-hidden ${
-                      isMf ? "border-amber-200" : "border-sky-200"
-                    }`}
+                    key={group.id}
+                    className={`bg-white rounded-xl shadow-sm border overflow-hidden ${color.border}`}
                   >
                     <div
-                      className={`px-6 py-5 border-b ${
-                        isMf
-                          ? "bg-gradient-to-r from-amber-50 to-white border-amber-100"
-                          : "bg-gradient-to-r from-sky-50 to-white border-sky-100"
-                      }`}
+                      className={`px-6 py-5 border-b bg-gradient-to-r ${color.headerFrom} to-white ${color.headerBorder}`}
                     >
                       <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
                         <div>
                           <span
-                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                              isMf ? "bg-amber-100 text-amber-700" : "bg-sky-100 text-sky-700"
-                            }`}
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${color.badgeBg} ${color.badgeText}`}
                           >
-                            {group}
+                            {group.name}
                           </span>
-                          <h3 className="text-lg font-semibold text-slate-900 mt-3">{group} Payroll Entry</h3>
+                          <h3 className="text-lg font-semibold text-slate-900 mt-3">{group.name} Payroll Entry</h3>
                           <p className="text-sm text-slate-500">{groupRows.length} employee(s) in this group</p>
                         </div>
 
@@ -815,15 +802,15 @@ export default function PayrollsClient({
                           <div className="rounded-xl border border-white bg-white/80 px-4 py-3">
                             <p className="text-xs uppercase tracking-wide text-slate-500">OT Total</p>
                             <p className="text-lg font-semibold text-emerald-600 mt-1">
-                              {formatCurrency(groupOvertime(group))}
+                              {formatCurrency(groupOvertime(group.id))}
                             </p>
                           </div>
                           <div className="rounded-xl border border-white bg-white/80 px-4 py-3">
                             <p className="text-xs uppercase tracking-wide text-slate-500">Salary Total</p>
                             <p
-                              className={`text-lg font-semibold mt-1 ${isMf ? "text-amber-700" : "text-sky-700"}`}
+                              className={`text-lg font-semibold mt-1 ${color.solidText}`}
                             >
-                              {formatCurrency(groupTotal(group))}
+                              {formatCurrency(groupTotal(group.id))}
                             </p>
                           </div>
                         </div>
@@ -838,8 +825,7 @@ export default function PayrollsClient({
                             <th className="px-6 py-4 font-semibold text-right">Daily Rate</th>
                             <th className="px-6 py-4 font-semibold text-center">Days Worked</th>
                             <th className="px-6 py-4 font-semibold text-center">Overtime Hours</th>
-                            <th className="px-6 py-4 font-semibold text-center">CA (Lea)</th>
-                            <th className="px-6 py-4 font-semibold text-center">CA (Bitoy)</th>
+                            <th className="px-6 py-4 font-semibold text-center">Cash Advance</th>
                             <th className="px-6 py-4 font-semibold text-right text-emerald-600">Overtime Pay</th>
                             <th className="px-6 py-4 font-semibold text-right text-indigo-600">Total Salary</th>
                           </tr>
@@ -847,7 +833,7 @@ export default function PayrollsClient({
                         <tbody className="divide-y divide-slate-100">
                           {groupRows.length === 0 ? (
                             <tr>
-                              <td colSpan={8} className="px-6 py-10 text-center text-slate-500 bg-slate-50/40">
+                              <td colSpan={7} className="px-6 py-10 text-center text-slate-500 bg-slate-50/40">
                                 No employees assigned to this group yet.
                               </td>
                             </tr>
@@ -911,19 +897,8 @@ export default function PayrollsClient({
                                     type="number"
                                     step="0.01"
                                     min="0"
-                                    value={row.caLea}
-                                    onChange={(e) => updateRow(row.id, "caLea", e.target.value)}
-                                    className="w-full rounded-md border-slate-300 border focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-3 py-2 text-center font-mono shadow-sm transition-shadow h-10 placeholder:text-slate-300"
-                                    placeholder="0"
-                                  />
-                                </td>
-                                <td className="px-6 py-3">
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={row.caBitoy}
-                                    onChange={(e) => updateRow(row.id, "caBitoy", e.target.value)}
+                                    value={row.ca}
+                                    onChange={(e) => updateRow(row.id, "ca", e.target.value)}
                                     className="w-full rounded-md border-slate-300 border focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-3 py-2 text-center font-mono shadow-sm transition-shadow h-10 placeholder:text-slate-300"
                                     placeholder="0"
                                   />
@@ -935,7 +910,7 @@ export default function PayrollsClient({
                                 </td>
                                 <td className="px-6 py-3 text-right">
                                   <span
-                                    className={`font-mono font-bold ${rowTotal(row) < 0 ? "text-rose-600" : isMf ? "text-amber-700" : "text-sky-700"}`}
+                                    className={`font-mono font-bold ${rowTotal(row) < 0 ? "text-rose-600" : color.solidText}`}
                                   >
                                     {formatCurrency(rowTotal(row))}
                                   </span>
@@ -945,22 +920,20 @@ export default function PayrollsClient({
                           )}
                         </tbody>
                         <tfoot
-                          className={`border-t-2 ${isMf ? "bg-amber-50 border-amber-100" : "bg-sky-50 border-sky-100"}`}
+                          className={`border-t-2 ${color.headerFrom.replace("from-", "bg-")} ${color.headerBorder}`}
                         >
                           <tr>
                             <td
-                              colSpan={7}
-                              className={`px-6 py-5 text-right font-bold tracking-wide uppercase text-sm ${
-                                isMf ? "text-amber-900" : "text-sky-900"
-                              }`}
+                              colSpan={6}
+                              className={`px-6 py-5 text-right font-bold tracking-wide uppercase text-sm ${color.solidTextDark}`}
                             >
-                              {group} Total Salary
+                              {group.name} Total Salary
                             </td>
                             <td className="px-6 py-5 text-right">
                               <span
-                                className={`font-mono font-bold text-2xl ${isMf ? "text-amber-700" : "text-sky-700"}`}
+                                className={`font-mono font-bold text-2xl ${color.solidText}`}
                               >
-                                {formatCurrency(groupTotal(group))}
+                                {formatCurrency(groupTotal(group.id))}
                               </span>
                             </td>
                           </tr>
@@ -972,7 +945,7 @@ export default function PayrollsClient({
               })}
             </div>
 
-            <div className="fixed right-4 bottom-24 sm:right-6 sm:bottom-6 z-50">
+            <div id="tour-voice-button" className="fixed right-4 bottom-24 sm:right-6 sm:bottom-6 z-50">
               <button
                 type="button"
                 onClick={toggleVoiceRecognition}
@@ -1090,43 +1063,34 @@ export default function PayrollsClient({
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-sky-200 p-6 flex items-center">
-              <div className="w-12 h-12 rounded-full bg-sky-50 text-sky-600 flex items-center justify-center mr-4">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20h10M9 7a3 3 0 116 0 3 3 0 01-6 0z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-500 mb-1">BASE 3 Total</p>
-                <p className="text-2xl font-bold text-sky-700">
-                  {(historySummary.group_totals["BASE 3"] ?? 0).toFixed(2)}
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-amber-200 p-6 flex items-center">
-              <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mr-4">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20h10M9 7a3 3 0 116 0 3 3 0 01-6 0z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-500 mb-1">MF Total</p>
-                <p className="text-2xl font-bold text-amber-700">
-                  {(historySummary.group_totals["MF"] ?? 0).toFixed(2)}
-                </p>
-              </div>
-            </div>
+            {groups.map((group) => {
+              const color = groupColor(groups, group);
+              return (
+                <div
+                  key={group.id}
+                  className={`bg-white rounded-xl shadow-sm border p-6 flex items-center ${color.border}`}
+                >
+                  <div
+                    className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${color.badgeBg} ${color.badgeText}`}
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20h10M9 7a3 3 0 116 0 3 3 0 01-6 0z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-500 mb-1">{group.name} Total</p>
+                    <p className={`text-2xl font-bold ${color.solidText}`}>
+                      {(historySummary.group_totals[group.id] ?? 0).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
 
             <div className="bg-white rounded-xl shadow-sm border border-indigo-200 p-6 flex items-center">
               <div className="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mr-4">
@@ -1163,142 +1127,128 @@ export default function PayrollsClient({
             </div>
           ) : (
             <div className="space-y-6">
-              {employeeGroups.map((group) => {
-                const groupData = payrollsByGroup[group];
-                const isMf = group === GROUP_MF;
+              {(() => {
                 // Uses allEmployees (not the active-only `employees` prop) so
                 // history rows for a now-inactive employee still resolve a
-                // name/rate instead of going blank.
+                // name/rate instead of going blank. Hoisted out of the loop
+                // below since it doesn't depend on the group being rendered.
                 const employeeById = new Map(allEmployees.map((e) => [e.id, e]));
 
-                return (
-                  <section
-                    key={group}
-                    className={`bg-white shadow-sm border rounded-xl overflow-hidden ${
-                      isMf ? "border-amber-200" : "border-sky-200"
-                    }`}
-                  >
-                    <div
-                      className={`px-6 py-5 border-b ${
-                        isMf
-                          ? "bg-gradient-to-r from-amber-50 to-white border-amber-100"
-                          : "bg-gradient-to-r from-sky-50 to-white border-sky-100"
-                      }`}
-                    >
-                      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
-                        <div>
-                          <span
-                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                              isMf ? "bg-amber-100 text-amber-700" : "bg-sky-100 text-sky-700"
-                            }`}
-                          >
-                            {group}
-                          </span>
-                          <h3 className="text-lg font-semibold text-slate-900 mt-3">{group} Saved Payroll</h3>
-                          <p className="text-sm text-slate-500">
-                            {groupData.count} record(s) on {selectedDateLabel}
-                          </p>
-                        </div>
+                return groups.map((group) => {
+                  const groupData = payrollsByGroup[group.id];
+                  const color = groupColor(groups, group);
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 xl:min-w-[520px]">
-                          <div className="rounded-xl border border-white bg-white/80 px-4 py-3">
-                            <p className="text-xs uppercase tracking-wide text-slate-500">Records</p>
-                            <p className="text-lg font-semibold text-slate-800 mt-1">{groupData.count}</p>
-                          </div>
-                          <div className="rounded-xl border border-white bg-white/80 px-4 py-3">
-                            <p className="text-xs uppercase tracking-wide text-slate-500">OT Total</p>
-                            <p className="text-lg font-semibold text-emerald-600 mt-1">
-                              {groupData.overtime_pay.toFixed(2)}
+                  return (
+                    <section
+                      key={group.id}
+                      className={`bg-white shadow-sm border rounded-xl overflow-hidden ${color.border}`}
+                    >
+                      <div
+                        className={`px-6 py-5 border-b bg-gradient-to-r ${color.headerFrom} to-white ${color.headerBorder}`}
+                      >
+                        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                          <div>
+                            <span
+                              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${color.badgeBg} ${color.badgeText}`}
+                            >
+                              {group.name}
+                            </span>
+                            <h3 className="text-lg font-semibold text-slate-900 mt-3">{group.name} Saved Payroll</h3>
+                            <p className="text-sm text-slate-500">
+                              {groupData.count} record(s) on {selectedDateLabel}
                             </p>
                           </div>
-                          <div className="rounded-xl border border-white bg-white/80 px-4 py-3">
-                            <p className="text-xs uppercase tracking-wide text-slate-500">Salary Total</p>
-                            <p className={`text-lg font-semibold mt-1 ${isMf ? "text-amber-700" : "text-sky-700"}`}>
-                              {groupData.total_salary.toFixed(2)}
-                            </p>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 xl:min-w-[520px]">
+                            <div className="rounded-xl border border-white bg-white/80 px-4 py-3">
+                              <p className="text-xs uppercase tracking-wide text-slate-500">Records</p>
+                              <p className="text-lg font-semibold text-slate-800 mt-1">{groupData.count}</p>
+                            </div>
+                            <div className="rounded-xl border border-white bg-white/80 px-4 py-3">
+                              <p className="text-xs uppercase tracking-wide text-slate-500">OT Total</p>
+                              <p className="text-lg font-semibold text-emerald-600 mt-1">
+                                {groupData.overtime_pay.toFixed(2)}
+                              </p>
+                            </div>
+                            <div className="rounded-xl border border-white bg-white/80 px-4 py-3">
+                              <p className="text-xs uppercase tracking-wide text-slate-500">Salary Total</p>
+                              <p className={`text-lg font-semibold mt-1 ${color.solidText}`}>
+                                {groupData.total_salary.toFixed(2)}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse whitespace-nowrap">
-                        <thead>
-                          <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-xs tracking-wider">
-                            <th className="px-6 py-4 font-semibold">Date</th>
-                            <th className="px-6 py-4 font-semibold">Name</th>
-                            <th className="px-6 py-4 font-semibold text-right">Daily Rate</th>
-                            <th className="px-6 py-4 font-semibold text-right">Days Worked</th>
-                            <th className="px-6 py-4 font-semibold text-right">OT Hours</th>
-                            <th className="px-6 py-4 font-semibold text-right">CA (Lea)</th>
-                            <th className="px-6 py-4 font-semibold text-right">CA (Bitoy)</th>
-                            <th className="px-6 py-4 font-semibold text-right text-emerald-600">OT Pay</th>
-                            <th className="px-6 py-4 font-semibold text-right text-indigo-600">Total Salary</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {groupData.records.length === 0 ? (
-                            <tr>
-                              <td colSpan={9} className="px-6 py-10 text-center text-slate-500 bg-slate-50/40">
-                                No records saved for {group} on this payroll date.
-                              </td>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse whitespace-nowrap">
+                          <thead>
+                            <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-xs tracking-wider">
+                              <th className="px-6 py-4 font-semibold">Date</th>
+                              <th className="px-6 py-4 font-semibold">Name</th>
+                              <th className="px-6 py-4 font-semibold text-right">Daily Rate</th>
+                              <th className="px-6 py-4 font-semibold text-right">Days Worked</th>
+                              <th className="px-6 py-4 font-semibold text-right">OT Hours</th>
+                              <th className="px-6 py-4 font-semibold text-right">Cash Advance</th>
+                              <th className="px-6 py-4 font-semibold text-right text-emerald-600">OT Pay</th>
+                              <th className="px-6 py-4 font-semibold text-right text-indigo-600">Total Salary</th>
                             </tr>
-                          ) : (
-                            groupData.records.map((payroll) => {
-                              const emp = employeeById.get(payroll.employee_id);
-                              return (
-                                <tr key={payroll.id} className="hover:bg-slate-50 transition-colors">
-                                  <td className="px-6 py-4 text-slate-500 text-sm">
-                                    {new Date(payroll.payroll_date + "T00:00:00").toLocaleDateString("en-US", {
-                                      month: "short",
-                                      day: "2-digit",
-                                      year: "numeric",
-                                    })}
-                                  </td>
-                                  <td className="px-6 py-4 font-medium text-slate-900">{emp?.name}</td>
-                                  <td className="px-6 py-4 text-right text-slate-700 font-mono">
-                                    {Number(emp?.daily_rate ?? 0).toFixed(2)}
-                                  </td>
-                                  <td className="px-6 py-4 text-right text-slate-700 font-mono">
-                                    {Number(payroll.days_worked).toFixed(2)}
-                                  </td>
-                                  <td className="px-6 py-4 text-right text-slate-700 font-mono">
-                                    {Number(payroll.overtime_hours).toFixed(2)}
-                                  </td>
-                                  <td className="px-6 py-4 text-right text-rose-600 font-mono">
-                                    {Number(payroll.cash_advance_lea ?? 0) > 0
-                                      ? `-${Number(payroll.cash_advance_lea).toFixed(2)}`
-                                      : "0.00"}
-                                  </td>
-                                  <td className="px-6 py-4 text-right text-rose-600 font-mono">
-                                    {Number(payroll.cash_advance_bitoy ?? 0) > 0
-                                      ? `-${Number(payroll.cash_advance_bitoy).toFixed(2)}`
-                                      : "0.00"}
-                                  </td>
-                                  <td className="px-6 py-4 text-right text-emerald-600 font-medium font-mono">
-                                    +{Number(payroll.overtime_pay).toFixed(2)}
-                                  </td>
-                                  <td
-                                    className={`px-6 py-4 text-right font-bold font-mono ${
-                                      Number(payroll.total_salary) < 0
-                                        ? "text-rose-600"
-                                        : isMf
-                                        ? "text-amber-700"
-                                        : "text-sky-700"
-                                    }`}
-                                  >
-                                    {Number(payroll.total_salary).toFixed(2)}
-                                  </td>
-                                </tr>
-                              );
-                            })
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </section>
-                );
-              })}
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {groupData.records.length === 0 ? (
+                              <tr>
+                                <td colSpan={8} className="px-6 py-10 text-center text-slate-500 bg-slate-50/40">
+                                  No records saved for {group.name} on this payroll date.
+                                </td>
+                              </tr>
+                            ) : (
+                              groupData.records.map((payroll) => {
+                                const emp = employeeById.get(payroll.employee_id);
+                                return (
+                                  <tr key={payroll.id} className="hover:bg-slate-50 transition-colors">
+                                    <td className="px-6 py-4 text-slate-500 text-sm">
+                                      {new Date(payroll.payroll_date + "T00:00:00").toLocaleDateString("en-US", {
+                                        month: "short",
+                                        day: "2-digit",
+                                        year: "numeric",
+                                      })}
+                                    </td>
+                                    <td className="px-6 py-4 font-medium text-slate-900">{emp?.name}</td>
+                                    <td className="px-6 py-4 text-right text-slate-700 font-mono">
+                                      {Number(emp?.daily_rate ?? 0).toFixed(2)}
+                                    </td>
+                                    <td className="px-6 py-4 text-right text-slate-700 font-mono">
+                                      {Number(payroll.days_worked).toFixed(2)}
+                                    </td>
+                                    <td className="px-6 py-4 text-right text-slate-700 font-mono">
+                                      {Number(payroll.overtime_hours).toFixed(2)}
+                                    </td>
+                                    <td className="px-6 py-4 text-right text-rose-600 font-mono">
+                                      {Number(payroll.cash_advance ?? 0) > 0
+                                        ? `-${Number(payroll.cash_advance).toFixed(2)}`
+                                        : "0.00"}
+                                    </td>
+                                    <td className="px-6 py-4 text-right text-emerald-600 font-medium font-mono">
+                                      +{Number(payroll.overtime_pay).toFixed(2)}
+                                    </td>
+                                    <td
+                                      className={`px-6 py-4 text-right font-bold font-mono ${
+                                        Number(payroll.total_salary) < 0 ? "text-rose-600" : color.solidText
+                                      }`}
+                                    >
+                                      {Number(payroll.total_salary).toFixed(2)}
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  );
+                });
+              })()}
             </div>
           )}
         </div>
@@ -1327,8 +1277,7 @@ export default function PayrollsClient({
                     <th className="py-2 pr-3">Name</th>
                     <th className="py-2 px-3 text-right">Days</th>
                     <th className="py-2 px-3 text-right">OT</th>
-                    <th className="py-2 px-3 text-right">CA Lea</th>
-                    <th className="py-2 px-3 text-right">CA Bitoy</th>
+                    <th className="py-2 px-3 text-right">Cash Advance</th>
                     <th className="py-2 pl-3 text-right">Total</th>
                   </tr>
                 </thead>
@@ -1338,8 +1287,7 @@ export default function PayrollsClient({
                       <td className="py-2 pr-3 font-medium text-slate-800">{row.name}</td>
                       <td className="py-2 px-3 text-right font-mono text-slate-600">{row.days || "0"}</td>
                       <td className="py-2 px-3 text-right font-mono text-slate-600">{row.ot || "0"}</td>
-                      <td className="py-2 px-3 text-right font-mono text-rose-600">{row.caLea || "0"}</td>
-                      <td className="py-2 px-3 text-right font-mono text-rose-600">{row.caBitoy || "0"}</td>
+                      <td className="py-2 px-3 text-right font-mono text-rose-600">{row.ca || "0"}</td>
                       <td
                         className={`py-2 pl-3 text-right font-mono font-semibold ${
                           rowTotal(row) < 0 ? "text-rose-600" : "text-slate-900"
@@ -1373,6 +1321,29 @@ export default function PayrollsClient({
             </div>
           </div>
         </div>
+      )}
+
+      {isDemo && (
+        <DemoTour
+          page="payrolls"
+          steps={[
+            {
+              element: "#tour-compute-tab",
+              intro: "Enter days worked and overtime for each payroll run here.",
+              position: "bottom",
+            },
+            {
+              element: "#tour-voice-button",
+              intro: "Tap and speak, e.g. \"mango 3 days 2 hours overtime.\"",
+              position: "left",
+            },
+            {
+              element: "#tour-history-tab",
+              intro: "Past Records — every saved payroll run, by group.",
+              position: "bottom",
+            },
+          ]}
+        />
       )}
     </div>
   );

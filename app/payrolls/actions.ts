@@ -10,12 +10,14 @@ export type PayrollEntry = {
   employee_id: number;
   days_worked: number;
   overtime_hours: number;
-  cash_advance_lea: number;
-  cash_advance_bitoy: number;
+  cash_advance: number;
 };
 
 export async function savePayrolls(payrollDate: string, entries: PayrollEntry[]) {
   const session = await requireSession();
+  if (session.accountId === null) {
+    redirect("/accounts");
+  }
 
   if (!payrollDate) {
     throw new Error("payroll_date is required.");
@@ -24,12 +26,13 @@ export async function savePayrolls(payrollDate: string, entries: PayrollEntry[])
   const supabase = getSupabaseServerClient();
 
   const employeeIds = entries.map((e) => e.employee_id);
-  // Scoped to user_id: even if entries somehow referenced another user's
-  // employee id, it simply won't be found here and gets skipped below.
+  // Scoped to account_id: even if entries somehow referenced another
+  // tenant's employee id, it simply won't be found here and gets skipped
+  // below.
   const { data: employees, error: employeesError } = await supabase
     .from("employees")
     .select("id, daily_rate")
-    .eq("user_id", session.userId)
+    .eq("account_id", session.accountId)
     .in("id", employeeIds);
 
   if (employeesError) {
@@ -43,10 +46,9 @@ export async function savePayrolls(payrollDate: string, entries: PayrollEntry[])
   for (const entryData of entries) {
     const daysWorked = Number(entryData.days_worked || 0);
     const overtimeHours = Number(entryData.overtime_hours || 0);
-    const cashAdvanceLea = Number(entryData.cash_advance_lea || 0);
-    const cashAdvanceBitoy = Number(entryData.cash_advance_bitoy || 0);
+    const cashAdvance = Number(entryData.cash_advance || 0);
 
-    if (daysWorked === 0 && overtimeHours === 0 && cashAdvanceLea === 0 && cashAdvanceBitoy === 0) {
+    if (daysWorked === 0 && overtimeHours === 0 && cashAdvance === 0) {
       continue;
     }
 
@@ -56,13 +58,7 @@ export async function savePayrolls(payrollDate: string, entries: PayrollEntry[])
     }
 
     const dailyRate = Number(employee.daily_rate);
-    const { overtimePay, totalSalary } = calculatePayroll(
-      dailyRate,
-      daysWorked,
-      overtimeHours,
-      cashAdvanceLea,
-      cashAdvanceBitoy
-    );
+    const { overtimePay, totalSalary } = calculatePayroll(dailyRate, daysWorked, overtimeHours, cashAdvance);
 
     // Mirrors Payroll::updateOrCreate(['employee_id', 'payroll_date'], [...])
     const { data: existing } = await supabase
@@ -70,18 +66,18 @@ export async function savePayrolls(payrollDate: string, entries: PayrollEntry[])
       .select("id")
       .eq("employee_id", employee.id)
       .eq("payroll_date", payrollDate)
-      .eq("user_id", session.userId)
+      .eq("account_id", session.accountId)
       .maybeSingle();
 
     const payload = {
       user_id: session.userId,
+      account_id: session.accountId,
       employee_id: employee.id,
       payroll_date: payrollDate,
       days_worked: daysWorked,
       overtime_hours: overtimeHours,
       overtime_pay: overtimePay,
-      cash_advance_lea: cashAdvanceLea,
-      cash_advance_bitoy: cashAdvanceBitoy,
+      cash_advance: cashAdvance,
       total_salary: totalSalary,
     };
 
@@ -90,7 +86,7 @@ export async function savePayrolls(payrollDate: string, entries: PayrollEntry[])
         .from("payrolls")
         .update(payload)
         .eq("id", existing.id)
-        .eq("user_id", session.userId);
+        .eq("account_id", session.accountId);
       if (error) throw new Error(error.message);
     } else {
       const { error } = await supabase.from("payrolls").insert(payload);

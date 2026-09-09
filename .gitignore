@@ -5,3 +5,8 @@ out
 .env.local
 *.log
 .DS_Store
+
+# provenly runtime state (the config at the root is tracked, this is not)
+.claude/.harness/
+
+tsconfig.tsbuildinfo

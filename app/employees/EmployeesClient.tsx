@@ -4,15 +4,25 @@ import { useState, useTransition } from "react";
 import Swal from "sweetalert2";
 import {
   Employee,
-  GROUP_BASE_3,
-  PAYROLL_GROUPS,
   PayrollGroup,
+  groupColor,
   suggestedPayrollGroup,
+  AUTO_SUGGEST_ACCOUNT_NAME,
 } from "@/lib/employee";
 import { createEmployee, updateEmployee, deactivateEmployee, activateEmployee } from "./actions";
+import DemoTour from "@/components/DemoTour";
 
 type Props = {
   employees: Employee[];
+  groups: PayrollGroup[];
+  /**
+   * Account name for this session -- only used to decide whether to show
+   * the auto-suggestion hint text. Passed down instead of imported
+   * elsewhere since this is a client component.
+   */
+  accountName?: string;
+  /** Whether this session is the shared demo account — drives the tour. */
+  isDemo?: boolean;
 };
 
 type ModalState = {
@@ -22,24 +32,29 @@ type ModalState = {
   name: string;
   voiceCode: string;
   dailyRate: string;
-  payrollGroup: PayrollGroup;
+  payrollGroupId: number | null;
 };
 
-const EMPTY_MODAL: ModalState = {
-  isOpen: false,
-  editMode: false,
-  employeeId: null,
-  name: "",
-  voiceCode: "",
-  dailyRate: "",
-  payrollGroup: GROUP_BASE_3,
-};
+function emptyModal(defaultGroupId: number | null): ModalState {
+  return {
+    isOpen: false,
+    editMode: false,
+    employeeId: null,
+    name: "",
+    voiceCode: "",
+    dailyRate: "",
+    payrollGroupId: defaultGroupId,
+  };
+}
 
-export default function EmployeesClient({ employees }: Props) {
-  const [modal, setModal] = useState<ModalState>(EMPTY_MODAL);
+export default function EmployeesClient({ employees, groups, accountName, isDemo }: Props) {
+  const generalGroup = groups.find((g) => g.name === "General") ?? groups[0] ?? null;
+  const [modal, setModal] = useState<ModalState>(() => emptyModal(generalGroup?.id ?? null));
   const [errors, setErrors] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
   const [statusTab, setStatusTab] = useState<"active" | "inactive">("active");
+
+  const groupById = new Map(groups.map((g) => [g.id, g]));
 
   const visibleEmployees = employees.filter((e) =>
     statusTab === "active" ? e.is_active : !e.is_active
@@ -49,7 +64,7 @@ export default function EmployeesClient({ employees }: Props) {
 
   function openCreate() {
     setErrors([]);
-    setModal({ ...EMPTY_MODAL, isOpen: true });
+    setModal({ ...emptyModal(generalGroup?.id ?? null), isOpen: true });
   }
 
   function openEdit(employee: Employee) {
@@ -61,20 +76,28 @@ export default function EmployeesClient({ employees }: Props) {
       name: employee.name,
       voiceCode: employee.voice_code ?? "",
       dailyRate: String(employee.daily_rate),
-      payrollGroup: employee.payroll_group ?? GROUP_BASE_3,
+      payrollGroupId: employee.payroll_group_id ?? generalGroup?.id ?? null,
     });
   }
 
   function closeModal() {
-    setModal(EMPTY_MODAL);
+    setModal(emptyModal(generalGroup?.id ?? null));
   }
 
   function handleNameChange(value: string) {
-    setModal((prev) => ({
-      ...prev,
-      name: value,
-      payrollGroup: prev.editMode ? prev.payrollGroup : suggestedPayrollGroup(value),
-    }));
+    setModal((prev) => {
+      if (prev.editMode) {
+        return { ...prev, name: value };
+      }
+      const suggested = accountName
+        ? suggestedPayrollGroup(value, accountName, groups)
+        : null;
+      return {
+        ...prev,
+        name: value,
+        payrollGroupId: suggested?.id ?? generalGroup?.id ?? prev.payrollGroupId,
+      };
+    });
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -133,11 +156,12 @@ export default function EmployeesClient({ employees }: Props) {
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Employees</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Maintain employee rates and assign each person to either BASE 3 or MF.
+            Maintain employee rates and assign each person to a payroll group.
           </p>
         </div>
 
         <button
+          id="tour-add-employee-btn"
           type="button"
           onClick={openCreate}
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-colors flex items-center gap-2"
@@ -184,7 +208,10 @@ export default function EmployeesClient({ employees }: Props) {
         </button>
       </div>
 
-      <div className="bg-white shadow-sm border border-slate-200 rounded-xl overflow-hidden">
+      <div
+        id="tour-employees-table"
+        className="bg-white shadow-sm border border-slate-200 rounded-xl overflow-hidden"
+      >
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse whitespace-nowrap">
             <thead>
@@ -231,7 +258,8 @@ export default function EmployeesClient({ employees }: Props) {
                 </tr>
               ) : (
                 visibleEmployees.map((employee) => {
-                  const isMf = employee.payroll_group === "MF";
+                  const group = groupById.get(employee.payroll_group_id) ?? null;
+                  const color = groupColor(groups, group);
                   return (
                     <tr key={employee.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 font-medium text-slate-900">{employee.name}</td>
@@ -246,11 +274,9 @@ export default function EmployeesClient({ employees }: Props) {
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                            isMf ? "bg-amber-100 text-amber-700" : "bg-sky-100 text-sky-700"
-                          }`}
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${color.badgeBg} ${color.badgeText}`}
                         >
-                          {employee.payroll_group}
+                          {group?.name ?? "Unassigned"}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right text-slate-700 font-mono">
@@ -360,28 +386,35 @@ export default function EmployeesClient({ employees }: Props) {
                   </div>
 
                   <div>
-                    <label htmlFor="payroll_group" className="block text-sm font-semibold text-slate-700 mb-2">
+                    <label htmlFor="payroll_group_id" className="block text-sm font-semibold text-slate-700 mb-2">
                       Payroll Group
                     </label>
                     <select
-                      name="payroll_group"
-                      id="payroll_group"
-                      value={modal.payrollGroup}
+                      name="payroll_group_id"
+                      id="payroll_group_id"
+                      value={modal.payrollGroupId ?? ""}
                       onChange={(e) =>
-                        setModal((prev) => ({ ...prev, payrollGroup: e.target.value as PayrollGroup }))
+                        setModal((prev) => ({ ...prev, payrollGroupId: parseInt(e.target.value, 10) }))
                       }
                       required
                       className="w-full rounded-lg border-slate-300 border focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow"
                     >
-                      {PAYROLL_GROUPS.map((group) => (
-                        <option key={group} value={group}>
-                          {group}
+                      {groups.length === 0 && (
+                        <option value="" disabled>
+                          No groups yet -- add one in Payroll Groups first
+                        </option>
+                      )}
+                      {groups.map((group) => (
+                        <option key={group.id} value={group.id}>
+                          {group.name}
                         </option>
                       ))}
                     </select>
-                    <p className="text-xs text-slate-500 mt-2">
-                      PULONG, TATA ROMY, ARIEL, and WILSON will default to MF when creating a new employee.
-                    </p>
+                    {accountName === AUTO_SUGGEST_ACCOUNT_NAME && (
+                      <p className="text-xs text-slate-500 mt-2">
+                        PULONG, TATA ROMY, ARIEL, and WILSON will default to MF when creating a new employee.
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -430,6 +463,26 @@ export default function EmployeesClient({ employees }: Props) {
             </div>
           </div>
         </div>
+      )}
+
+      {isDemo && (
+        <DemoTour
+          page="employees"
+          nextPath="/payrolls"
+          nextStage="payrolls"
+          steps={[
+            {
+              element: "#tour-add-employee-btn",
+              intro: "Add a new employee here.",
+              position: "left",
+            },
+            {
+              element: "#tour-employees-table",
+              intro: "Active/Inactive tabs — deactivating keeps their payroll history.",
+              position: "top",
+            },
+          ]}
+        />
       )}
     </div>
   );

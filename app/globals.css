@@ -1,6 +1,44 @@
+@import "intro.js/minified/introjs.min.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Demo tour overrides — intro.js ships light-only default styling; match
+   this app's indigo/slate palette instead of the library's default blue. */
+.introjs-tooltip {
+  border-radius: 0.75rem;
+  font-family: var(--font-inter), "Inter", sans-serif;
+  max-width: 340px;
+}
+.introjs-tooltiptext {
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+.introjs-progress {
+  background-color: #e2e8f0;
+}
+.introjs-progressbar {
+  background-color: #4f46e5;
+}
+.introjs-button {
+  border-radius: 0.5rem;
+  text-shadow: none;
+}
+.introjs-nextbutton,
+.introjs-donebutton {
+  background: #4f46e5 !important;
+  border-color: #4f46e5 !important;
+  color: #fff !important;
+}
+.introjs-nextbutton:hover,
+.introjs-donebutton:hover {
+  background: #4338ca !important;
+  border-color: #4338ca !important;
+}
+.introjs-helperNumberLayer {
+  background: #4f46e5;
+}
 
 body {
   font-family: var(--font-inter), "Inter", sans-serif;

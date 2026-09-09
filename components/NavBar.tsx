@@ -6,7 +6,7 @@ import { logout } from "@/app/actions/auth";
 
 type Props = {
   username: string;
-  role: "owner" | "admin";
+  role: "owner" | "admin" | "staff";
 };
 
 export default function NavBar({ username, role }: Props) {
@@ -14,6 +14,7 @@ export default function NavBar({ username, role }: Props) {
   const isDashboard = pathname === "/dashboard";
   const isPayrolls = pathname?.startsWith("/payrolls");
   const isEmployees = pathname?.startsWith("/employees");
+  const isPayrollGroups = pathname?.startsWith("/payroll-groups");
   const isAccounts = pathname?.startsWith("/accounts");
 
   function linkClass(active: boolean) {
@@ -44,6 +45,11 @@ export default function NavBar({ username, role }: Props) {
           <Link href="/employees" className={linkClass(!!isEmployees)}>
             Employees
           </Link>
+          {role !== "owner" && (
+            <Link href="/payroll-groups" className={linkClass(!!isPayrollGroups)}>
+              Payroll Groups
+            </Link>
+          )}
           {role === "owner" && (
             <Link href="/accounts" className={linkClass(!!isAccounts)}>
               Accounts

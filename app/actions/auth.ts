@@ -21,7 +21,7 @@ export async function login(formData: FormData): Promise<LoginState> {
   const supabase = getSupabaseServerClient();
   const { data: user, error } = await supabase
     .from("users")
-    .select("id, username, password_hash, role, is_active")
+    .select("id, username, password_hash, role, is_active, account_id")
     .eq("username", username)
     .maybeSingle();
 
@@ -44,7 +44,8 @@ export async function login(formData: FormData): Promise<LoginState> {
   const cookieValue = await createSessionCookieValue({
     userId: user.id,
     username: user.username,
-    role: user.role as "owner" | "admin",
+    role: user.role as "owner" | "admin" | "staff",
+    accountId: user.account_id,
   });
 
   cookies().set(SESSION_COOKIE_NAME, cookieValue, {
@@ -56,7 +57,11 @@ export async function login(formData: FormData): Promise<LoginState> {
     // cookie, cleared automatically when the tab/browser closes.
   });
 
-  redirect("/dashboard");
+  // The "Try Demo" button submits this same action with a hidden
+  // tour=1 field so the demo visitor lands on the tour instead of a
+  // plain dashboard. Real logins never send this field.
+  const startTour = formData.get("tour") === "1";
+  redirect(startTour ? "/dashboard?tour=1" : "/dashboard");
 }
 
 export async function logout() {

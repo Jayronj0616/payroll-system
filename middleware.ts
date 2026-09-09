@@ -13,6 +13,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Cron routes have no session cookie at all — Vercel's scheduler calls
+  // them directly with an Authorization header, not a browser session.
+  // They're still protected, just by their own CRON_SECRET check inside
+  // the route handler instead of this cookie gate.
+  if (pathname.startsWith("/api/cron/")) {
+    return NextResponse.next();
+  }
+
   const cookieValue = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = await verifySessionCookieValue(cookieValue);
 

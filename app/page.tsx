@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE_NAME, verifySessionCookieValue } from "@/lib/session";
 import LoginModal from "@/components/LoginModal";
+import TryDemoButton from "@/components/TryDemoButton";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,10 @@ export default async function LandingPage({
             Payroll<span className="text-indigo-400">Pro</span>
           </span>
         </div>
-        <LoginModal autoOpen={searchParams.login === "1"} />
+        <div className="flex items-center gap-3">
+          <TryDemoButton />
+          <LoginModal autoOpen={searchParams.login === "1"} />
+        </div>
       </nav>
 
       <main className="container mx-auto px-4 max-w-6xl">

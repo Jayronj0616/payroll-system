@@ -3,7 +3,9 @@ import { Inter } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import NavBar from "@/components/NavBar";
+import DemoBanner from "@/components/DemoBanner";
 import { SESSION_COOKIE_NAME, verifySessionCookieValue } from "@/lib/session";
+import { DEMO_USERNAME } from "@/lib/demo";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -26,6 +28,7 @@ export default async function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <body className="bg-slate-50 text-slate-800 antialiased">
+        {session?.username === DEMO_USERNAME && <DemoBanner />}
         {session && <NavBar username={session.username} role={session.role} />}
         {session ? (
           <main className="container mx-auto px-4 py-8 max-w-[1800px]">{children}</main>
