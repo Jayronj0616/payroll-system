@@ -15,7 +15,6 @@ export default function NavBar({ username, role }: Props) {
   const isPayrolls = pathname?.startsWith("/payrolls");
   const isEmployees = pathname?.startsWith("/employees");
   const isPayrollGroups = pathname?.startsWith("/payroll-groups");
-  const isAccounts = pathname?.startsWith("/accounts");
 
   function linkClass(active: boolean) {
     return `transition-colors ${
@@ -45,16 +44,12 @@ export default function NavBar({ username, role }: Props) {
           <Link href="/employees" className={linkClass(!!isEmployees)}>
             Employees
           </Link>
-          {role !== "owner" && (
-            <Link href="/payroll-groups" className={linkClass(!!isPayrollGroups)}>
-              Payroll Groups
-            </Link>
-          )}
-          {role === "owner" && (
-            <Link href="/accounts" className={linkClass(!!isAccounts)}>
-              Accounts
-            </Link>
-          )}
+          {/* NavBar only ever renders for tenant sessions now — owner gets
+              OwnerSidebar instead (see app/layout.tsx) — so this is safe to
+              show unconditionally for admin/staff. */}
+          <Link href="/payroll-groups" className={linkClass(!!isPayrollGroups)}>
+            Payroll Groups
+          </Link>
 
           <div className="h-6 w-px bg-slate-200" />
 
