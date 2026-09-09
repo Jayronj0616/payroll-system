@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export type TourStep = {
@@ -32,10 +32,9 @@ type Props = {
 export default function DemoTour({ page, steps, nextPath, nextStage }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const startedRef = useRef(false);
 
   useEffect(() => {
-    if (startedRef.current || steps.length === 0) return;
+    if (steps.length === 0) return;
 
     let shouldStart = false;
     try {
@@ -52,8 +51,17 @@ export default function DemoTour({ page, steps, nextPath, nextStage }: Props) {
     }
 
     if (!shouldStart) return;
-    startedRef.current = true;
 
+    // Per-invocation cancellation flag, not a ref — React 18 StrictMode
+    // double-invokes this effect in dev (mount, cleanup, mount again). A
+    // ref-based "already started" guard would let the *first* invocation
+    // claim the start and then get cancelled by its own cleanup, while the
+    // second (real) invocation sees the guard already tripped and never
+    // runs — net result, the tour silently never starts. A closure-local
+    // flag lets each invocation own its own cancellation correctly: the
+    // spurious first one gets cancelled before its import resolves, the
+    // second one runs clean. In production there's only one invocation, so
+    // this behaves exactly the same as the simpler version would have.
     let cancelled = false;
     let finished = false;
 

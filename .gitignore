@@ -9,4 +9,7 @@ out
 # provenly runtime state (the config at the root is tracked, this is not)
 .claude/.harness/
 
+# personal Claude Code permission overrides — not shared
+.claude/settings.local.json
+
 tsconfig.tsbuildinfo
