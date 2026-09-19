@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logout } from "@/app/actions/auth";
@@ -9,12 +10,20 @@ type Props = {
   role: "owner" | "admin" | "staff";
 };
 
+const NAV_LINKS = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/payrolls", label: "Payroll" },
+  { href: "/employees", label: "Employees" },
+  { href: "/payroll-groups", label: "Payroll Groups" },
+];
+
 export default function NavBar({ username, role }: Props) {
   const pathname = usePathname();
-  const isDashboard = pathname === "/dashboard";
-  const isPayrolls = pathname?.startsWith("/payrolls");
-  const isEmployees = pathname?.startsWith("/employees");
-  const isPayrollGroups = pathname?.startsWith("/payroll-groups");
+  const [isOpen, setIsOpen] = useState(false);
+
+  function isActive(href: string) {
+    return href === "/dashboard" ? pathname === href : !!pathname?.startsWith(href);
+  }
 
   function linkClass(active: boolean) {
     return `transition-colors ${
@@ -34,22 +43,15 @@ export default function NavBar({ username, role }: Props) {
           </Link>
         </div>
 
-        <div className="flex items-center space-x-6">
-          <Link href="/dashboard" className={linkClass(isDashboard)}>
-            Dashboard
-          </Link>
-          <Link href="/payrolls" className={linkClass(!!isPayrolls)}>
-            Payroll
-          </Link>
-          <Link href="/employees" className={linkClass(!!isEmployees)}>
-            Employees
-          </Link>
-          {/* NavBar only ever renders for tenant sessions now — owner gets
-              OwnerSidebar instead (see app/layout.tsx) — so this is safe to
-              show unconditionally for admin/staff. */}
-          <Link href="/payroll-groups" className={linkClass(!!isPayrollGroups)}>
-            Payroll Groups
-          </Link>
+        {/* NavBar only ever renders for tenant sessions now — owner gets
+            OwnerSidebar instead (see app/layout.tsx) — so these links are
+            safe to show unconditionally for admin/staff. */}
+        <div className="hidden md:flex items-center space-x-6">
+          {NAV_LINKS.map((item) => (
+            <Link key={item.href} href={item.href} className={linkClass(isActive(item.href))}>
+              {item.label}
+            </Link>
+          ))}
 
           <div className="h-6 w-px bg-slate-200" />
 
@@ -63,7 +65,50 @@ export default function NavBar({ username, role }: Props) {
             </button>
           </form>
         </div>
+
+        <button
+          onClick={() => setIsOpen((v) => !v)}
+          aria-label="Toggle menu"
+          aria-expanded={isOpen}
+          className="md:hidden text-slate-500 hover:text-slate-900"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {isOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
+        </button>
       </div>
+
+      {isOpen && (
+        <div className="md:hidden border-t border-slate-200 px-4 py-3 space-y-3">
+          <div className="flex flex-col gap-3">
+            {NAV_LINKS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setIsOpen(false)}
+                className={linkClass(isActive(item.href))}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+          <div className="flex items-center justify-between border-t border-slate-200 pt-3">
+            <span className="text-sm text-slate-500">{username}</span>
+            <form action={logout}>
+              <button
+                type="submit"
+                className="text-sm text-slate-500 hover:text-rose-600 font-medium transition-colors"
+              >
+                Log out
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
