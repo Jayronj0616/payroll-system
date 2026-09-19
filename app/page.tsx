@@ -1,6 +1,3 @@
-import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
-import { SESSION_COOKIE_NAME, verifySessionCookieValue } from "@/lib/session";
 import LoginModal from "@/components/LoginModal";
 import TryDemoButton from "@/components/TryDemoButton";
 
@@ -11,14 +8,11 @@ export default async function LandingPage({
 }: {
   searchParams: { login?: string };
 }) {
-  // Already signed in? The landing page is for visitors, not for a
-  // logged-in user parked at "/" — send them straight to their dashboard.
-  const cookieValue = cookies().get(SESSION_COOKIE_NAME)?.value;
-  const session = await verifySessionCookieValue(cookieValue);
-  if (session) {
-    redirect("/dashboard");
-  }
-
+  // "/" always renders the landing page, even for a browser with a valid
+  // session cookie from an earlier visit — it's the entry point people
+  // land on from an outside link (e.g. the portfolio), and auto-redirecting
+  // straight to /dashboard skipped it silently, along with the demo tour
+  // that only fires from a fresh "Try Demo" click on this page.
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 text-white">
       <nav className="container mx-auto px-4 py-6 flex items-center justify-between max-w-6xl">
