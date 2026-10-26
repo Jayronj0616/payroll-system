@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { fireSwal } from "@/lib/swal";
 import { Employee, PayrollGroup, groupColor } from "@/lib/employee";
@@ -305,6 +305,9 @@ export default function PayrollsClient({
   isDemo,
 }: Props) {
   const router = useRouter();
+  // Changing only the query string doesn't trigger app/loading.tsx, so the
+  // history date filter tracks its own pending state for instant feedback.
+  const [isHistoryPending, startHistoryTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<"compute" | "history">(initialTab);
   const [payrollDate, setPayrollDate] = useState(entryPayrollDate);
   const [historyDateInput, setHistoryDateInput] = useState(selectedPayrollDate ?? "");
@@ -570,7 +573,9 @@ export default function PayrollsClient({
 
   function handleHistoryDateSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    router.push(`/payrolls?tab=history&payroll_date=${historyDateInput}`);
+    startHistoryTransition(() => {
+      router.push(`/payrolls?tab=history&payroll_date=${historyDateInput}`);
+    });
   }
 
   const selectedDateLabel = formatDateLabel(selectedPayrollDate);
@@ -1008,7 +1013,7 @@ export default function PayrollsClient({
       )}
 
       {activeTab === "history" && (
-        <div>
+        <div className={`transition-opacity ${isHistoryPending ? "opacity-50 pointer-events-none" : ""}`}>
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
             <div>
               <h2 className="text-lg font-semibold text-slate-800">History & Reports</h2>
@@ -1031,13 +1036,14 @@ export default function PayrollsClient({
               />
               <button
                 type="submit"
+                disabled={isHistoryPending}
                 className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 py-2.5 px-3 rounded-lg text-sm font-medium shadow-sm transition-colors"
               >
-                Show Date
+                {isHistoryPending ? "Loading…" : "Show Date"}
               </button>
               <button
                 type="button"
-                onClick={() => router.push("/payrolls?tab=history")}
+                onClick={() => startHistoryTransition(() => router.push("/payrolls?tab=history"))}
                 className="text-slate-500 hover:text-indigo-600 font-medium text-sm transition-colors"
               >
                 Latest Saved Date
