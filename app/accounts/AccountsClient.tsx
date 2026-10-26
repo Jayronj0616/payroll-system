@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Swal from "sweetalert2";
+import { fireSwal } from "@/lib/swal";
 import {
   createAccount,
   deactivateAccount,
@@ -110,7 +110,7 @@ export default function AccountsClient({ accounts }: Props) {
   function confirmToggleStatus(account: AccountRow) {
     const isDeactivating = account.isActive;
 
-    Swal.fire({
+    fireSwal({
       title: isDeactivating ? "Deactivate Account?" : "Activate Account?",
       html: isDeactivating
         ? `Are you sure you want to deactivate <span class="font-bold text-slate-900">${escapeHtml(account.name)}</span>?<br><br><span class="text-sm text-slate-500">Their admin will no longer be able to log in. Data is kept and the account can be reactivated anytime.</span>`

@@ -30,34 +30,18 @@ export default async function DashboardPage() {
 
   const supabase = getSupabaseServerClient();
 
-  const employeesQuery = supabase
-    .from("employees")
-    .select("id, is_active, payroll_group")
-    .eq("account_id", session.accountId);
-  const payrollsQuery = supabase
-    .from("payrolls")
-    .select("total_salary, payroll_date")
-    .eq("account_id", session.accountId);
+  // Migration 008: all five numbers are computed in SQL, one row back.
+  const { data: statsRows, error: statsError } = await supabase.rpc("dashboard_stats", {
+    p_account_id: session.accountId,
+  });
+  if (statsError) throw new Error(statsError.message);
 
-  const [{ data: employees, error: employeesError }, { data: payrolls, error: payrollsError }] =
-    await Promise.all([employeesQuery, payrollsQuery]);
-
-  if (employeesError) throw new Error(employeesError.message);
-  if (payrollsError) throw new Error(payrollsError.message);
-
-  const totalEmployees = employees?.length ?? 0;
-  const activeEmployees = employees?.filter((e) => e.is_active).length ?? 0;
-  const inactiveEmployees = totalEmployees - activeEmployees;
-
-  const totalSalaries = (payrolls ?? []).reduce((sum, p) => sum + Number(p.total_salary), 0);
-
-  const latestPayrollDate = (payrolls ?? []).reduce<string | null>((latest, p) => {
-    return !latest || p.payroll_date > latest ? p.payroll_date : latest;
-  }, null);
-
-  const latestPayrollTotal = (payrolls ?? [])
-    .filter((p) => p.payroll_date === latestPayrollDate)
-    .reduce((sum, p) => sum + Number(p.total_salary), 0);
+  const stats = statsRows?.[0];
+  const activeEmployees = Number(stats?.active_employees ?? 0);
+  const inactiveEmployees = Number(stats?.inactive_employees ?? 0);
+  const totalSalaries = Number(stats?.total_salaries ?? 0);
+  const latestPayrollDate: string | null = stats?.latest_payroll_date ?? null;
+  const latestPayrollTotal = Number(stats?.latest_payroll_total ?? 0);
 
   const latestPayrollDateLabel = latestPayrollDate
     ? new Date(latestPayrollDate + "T00:00:00").toLocaleDateString("en-US", {

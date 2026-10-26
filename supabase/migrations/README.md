@@ -11,5 +11,6 @@ Run these against the Supabase project in **numeric order**, via the Supabase da
 | `005-payroll-groups.sql` | Adds `payroll_groups` table (per-`account_id`), `employees.payroll_group_id` FK, backfills existing free-text `payroll_group` values. |
 | `006-fix-tenant-admin-role.sql` | Defensive no-op: written for a suspected `jayronj0616` role bug, but a direct DB check (2026-09-09) showed his role was already correct (`'admin'`). Not required to run — kept in case the role ever drifts. |
 | `007-single-cash-advance.sql` | Adds `payrolls.cash_advance`, backfilled as `cash_advance_lea + cash_advance_bitoy`, for every account. Old two-field split is retired app-side but kept in the DB as a rollback safety net. |
+| `008-dashboard-stats.sql` | Adds the `dashboard_stats(account_id)` function (service-role only) so the dashboard totals are computed in SQL, plus a `payrolls (account_id, payroll_date)` index. Run before deploying the dashboard change. |
 
 New migrations: add the next number (`006-...sql`), update this table, and note it in `PROGRESS.md`.

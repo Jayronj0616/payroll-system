@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Swal from "sweetalert2";
+import { fireSwal } from "@/lib/swal";
 import {
   Employee,
   PayrollGroup,
@@ -120,7 +120,7 @@ export default function EmployeesClient({ employees, groups, accountName, isDemo
   function confirmToggleStatus(employee: Employee) {
     const isDeactivating = employee.is_active;
 
-    Swal.fire({
+    fireSwal({
       title: isDeactivating ? "Deactivate Employee?" : "Activate Employee?",
       html: isDeactivating
         ? `Are you sure you want to deactivate <span class="font-bold text-slate-900">${escapeHtml(employee.name)}</span>?<br><br><span class="text-sm text-slate-500">They will be hidden from Compute Entry and the active list, but their payroll history is kept and they can be reactivated anytime.</span>`

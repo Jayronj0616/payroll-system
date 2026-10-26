@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Swal from "sweetalert2";
+import { fireSwal } from "@/lib/swal";
 import { PayrollGroup, groupColor } from "@/lib/employee";
 import { createPayrollGroup, renamePayrollGroup, deletePayrollGroup } from "./actions";
 
@@ -62,7 +62,7 @@ export default function PayrollGroupsClient({ groups, employeeCountByGroupId }: 
   function confirmDelete(group: PayrollGroup) {
     const count = employeeCountByGroupId[group.id] ?? 0;
 
-    Swal.fire({
+    fireSwal({
       title: "Delete Payroll Group?",
       html:
         count > 0
@@ -84,7 +84,7 @@ export default function PayrollGroupsClient({ groups, employeeCountByGroupId }: 
       if (result.isConfirmed) {
         startTransition(() => {
           deletePayrollGroup(group.id).catch((err) => {
-            Swal.fire({
+            fireSwal({
               icon: "error",
               title: "Could not delete group",
               text: err instanceof Error ? err.message : "Something went wrong.",

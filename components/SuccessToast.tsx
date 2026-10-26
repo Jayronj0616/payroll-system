@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Swal from "sweetalert2";
+import { fireSwal } from "@/lib/swal";
 
 export default function SuccessToast() {
   const router = useRouter();
@@ -12,7 +12,7 @@ export default function SuccessToast() {
   useEffect(() => {
     if (!success) return;
 
-    Swal.fire({
+    fireSwal({
       toast: true,
       position: "top-end",
       icon: "success",

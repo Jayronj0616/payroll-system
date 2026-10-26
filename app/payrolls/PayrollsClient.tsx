@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Swal from "sweetalert2";
+import { fireSwal } from "@/lib/swal";
 import { Employee, PayrollGroup, groupColor } from "@/lib/employee";
 import { savePayrolls, PayrollEntry } from "./actions";
 import DemoTour from "@/components/DemoTour";
@@ -280,7 +280,7 @@ function voiceErrorMessage(errorCode: string): string {
 }
 
 function toast(icon: "success" | "error", title: string) {
-  Swal.fire({
+  fireSwal({
     toast: true,
     position: "top-end",
     icon,

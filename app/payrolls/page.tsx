@@ -32,13 +32,28 @@ export default async function PayrollsPage({
   }
   const supabase = getSupabaseServerClient();
 
-  const [{ data: employeesData, error: employeesError }, { data: groupsData, error: groupsError }] =
-    await Promise.all([
-      supabase.from("employees").select("*").eq("account_id", session.accountId),
-      supabase.from("payroll_groups").select("*").eq("account_id", session.accountId),
-    ]);
+  // Mirrors Payroll::query()->max('payroll_date'), scoped to this account.
+  const [
+    { data: employeesData, error: employeesError },
+    { data: groupsData, error: groupsError },
+    { data: latestRow, error: latestError },
+  ] = await Promise.all([
+    supabase
+      .from("employees")
+      .select("id, name, voice_code, daily_rate, payroll_group_id, is_active, created_at, updated_at")
+      .eq("account_id", session.accountId),
+    supabase.from("payroll_groups").select("id, account_id, name, created_at").eq("account_id", session.accountId),
+    supabase
+      .from("payrolls")
+      .select("payroll_date")
+      .eq("account_id", session.accountId)
+      .order("payroll_date", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
   if (employeesError) throw new Error(employeesError.message);
   if (groupsError) throw new Error(groupsError.message);
+  if (latestError) throw new Error(latestError.message);
 
   const groups = sortGroups((groupsData ?? []) as PayrollGroup[]);
 
@@ -50,34 +65,21 @@ export default async function PayrollsPage({
   const employees = allEmployees.filter((e) => e.is_active);
   const employeeById = new Map(allEmployees.map((e) => [e.id, e]));
 
-  // Mirrors Payroll::query()->max('payroll_date'), scoped to this account.
-  const { data: latestRow } = await supabase
-    .from("payrolls")
-    .select("payroll_date")
-    .eq("account_id", session.accountId)
-    .order("payroll_date", { ascending: false })
-    .limit(1)
-    .maybeSingle();
   const latestPayrollDate = latestRow?.payroll_date ?? null;
 
   const selectedPayrollDate = searchParams.payroll_date || latestPayrollDate;
 
+  // No selected date means the account has no payrolls at all (the date
+  // defaults to the latest one), so there is nothing to load.
   let payrolls: Payroll[] = [];
   if (selectedPayrollDate) {
     const { data: payrollsData, error: payrollsError } = await supabase
       .from("payrolls")
-      .select("*")
+      .select(
+        "id, employee_id, payroll_date, days_worked, overtime_hours, overtime_pay, cash_advance, total_salary, created_at, updated_at"
+      )
       .eq("account_id", session.accountId)
       .eq("payroll_date", selectedPayrollDate)
-      .order("created_at", { ascending: false });
-    if (payrollsError) throw new Error(payrollsError.message);
-    payrolls = (payrollsData ?? []) as Payroll[];
-  } else {
-    const { data: payrollsData, error: payrollsError } = await supabase
-      .from("payrolls")
-      .select("*")
-      .eq("account_id", session.accountId)
-      .order("payroll_date", { ascending: false })
       .order("created_at", { ascending: false });
     if (payrollsError) throw new Error(payrollsError.message);
     payrolls = (payrollsData ?? []) as Payroll[];

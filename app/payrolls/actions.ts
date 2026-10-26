@@ -41,7 +41,7 @@ export async function savePayrolls(payrollDate: string, entries: PayrollEntry[])
 
   const employeeById = new Map((employees ?? []).map((e) => [e.id, e]));
 
-  let savedCount = 0;
+  const rows = [];
 
   for (const entryData of entries) {
     const daysWorked = Number(entryData.days_worked || 0);
@@ -60,16 +60,7 @@ export async function savePayrolls(payrollDate: string, entries: PayrollEntry[])
     const dailyRate = Number(employee.daily_rate);
     const { overtimePay, totalSalary } = calculatePayroll(dailyRate, daysWorked, overtimeHours, cashAdvance);
 
-    // Mirrors Payroll::updateOrCreate(['employee_id', 'payroll_date'], [...])
-    const { data: existing } = await supabase
-      .from("payrolls")
-      .select("id")
-      .eq("employee_id", employee.id)
-      .eq("payroll_date", payrollDate)
-      .eq("account_id", session.accountId)
-      .maybeSingle();
-
-    const payload = {
+    rows.push({
       user_id: session.userId,
       account_id: session.accountId,
       employee_id: employee.id,
@@ -79,22 +70,22 @@ export async function savePayrolls(payrollDate: string, entries: PayrollEntry[])
       overtime_pay: overtimePay,
       cash_advance: cashAdvance,
       total_salary: totalSalary,
-    };
-
-    if (existing) {
-      const { error } = await supabase
-        .from("payrolls")
-        .update(payload)
-        .eq("id", existing.id)
-        .eq("account_id", session.accountId);
-      if (error) throw new Error(error.message);
-    } else {
-      const { error } = await supabase.from("payrolls").insert(payload);
-      if (error) throw new Error(error.message);
-    }
-
-    savedCount++;
+    });
   }
+
+  // Mirrors Payroll::updateOrCreate(['employee_id', 'payroll_date'], [...]) as
+  // one round trip. Every row's employee_id came from the account-scoped
+  // lookup above, so the (employee_id, payroll_date) conflict target can only
+  // ever match this account's own rows.
+  // A repeated employee_id in one batch would make the upsert fail; the last
+  // entry wins, matching the old per-row loop.
+  const uniqueRows = [...new Map(rows.map((r) => [r.employee_id, r])).values()];
+  if (uniqueRows.length > 0) {
+    const { error } = await supabase.from("payrolls").upsert(uniqueRows, { onConflict: "employee_id,payroll_date" });
+    if (error) throw new Error(error.message);
+  }
+
+  const savedCount = uniqueRows.length;
 
   revalidatePath("/payrolls");
 
