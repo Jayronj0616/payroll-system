@@ -154,7 +154,7 @@ export default function AccountsClient({ accounts }: Props) {
         <button
           type="button"
           onClick={openCreate}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-colors flex items-center gap-2"
+          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-colors flex items-center gap-2"
         >
           <svg fill="none" className="w-5 h-5" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -192,7 +192,7 @@ export default function AccountsClient({ accounts }: Props) {
                     <button
                       type="button"
                       onClick={openCreate}
-                      className="text-indigo-600 mt-2 hover:underline font-medium"
+                      className="text-blue-600 mt-2 hover:underline font-medium"
                     >
                       Add the first one
                     </button>
@@ -225,7 +225,7 @@ export default function AccountsClient({ accounts }: Props) {
                         type="button"
                         onClick={() => openEdit(account)}
                         disabled={!account.admin}
-                        className="text-indigo-500 hover:text-indigo-700 font-medium transition-colors disabled:opacity-40 disabled:hover:text-indigo-500 disabled:cursor-not-allowed"
+                        className="text-blue-500 hover:text-blue-700 font-medium transition-colors disabled:opacity-40 disabled:hover:text-blue-500 disabled:cursor-not-allowed"
                       >
                         Edit Credentials
                       </button>
@@ -300,7 +300,7 @@ export default function AccountsClient({ accounts }: Props) {
                         setCreateModal((prev) => ({ ...prev, accountName: e.target.value }))
                       }
                       required
-                      className="w-full rounded-lg border-slate-300 border focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow placeholder:text-slate-400"
+                      className="w-full rounded-lg border-slate-300 border focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow placeholder:text-slate-400"
                       placeholder="e.g. Acme Trucking"
                     />
                   </div>
@@ -318,7 +318,7 @@ export default function AccountsClient({ accounts }: Props) {
                         setCreateModal((prev) => ({ ...prev, username: e.target.value }))
                       }
                       required
-                      className="w-full rounded-lg border-slate-300 border focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow placeholder:text-slate-400"
+                      className="w-full rounded-lg border-slate-300 border focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow placeholder:text-slate-400"
                       placeholder="e.g. acmeadmin"
                     />
                   </div>
@@ -337,7 +337,7 @@ export default function AccountsClient({ accounts }: Props) {
                       }
                       required
                       minLength={8}
-                      className="w-full rounded-lg border-slate-300 border focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow placeholder:text-slate-400"
+                      className="w-full rounded-lg border-slate-300 border focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow placeholder:text-slate-400"
                       placeholder="At least 8 characters"
                     />
                   </div>
@@ -354,7 +354,7 @@ export default function AccountsClient({ accounts }: Props) {
                   <button
                     type="submit"
                     disabled={isPending}
-                    className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 flex items-center gap-2 disabled:opacity-60"
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center gap-2 disabled:opacity-60"
                   >
                     <span>Create Account</span>
                     <svg className="w-4 h-4 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -419,7 +419,7 @@ export default function AccountsClient({ accounts }: Props) {
                       value={editModal.username}
                       onChange={(e) => setEditModal((prev) => ({ ...prev, username: e.target.value }))}
                       required
-                      className="w-full rounded-lg border-slate-300 border focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow"
+                      className="w-full rounded-lg border-slate-300 border focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow"
                     />
                   </div>
 
@@ -434,7 +434,7 @@ export default function AccountsClient({ accounts }: Props) {
                       value={editModal.password}
                       onChange={(e) => setEditModal((prev) => ({ ...prev, password: e.target.value }))}
                       minLength={8}
-                      className="w-full rounded-lg border-slate-300 border focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow placeholder:text-slate-400"
+                      className="w-full rounded-lg border-slate-300 border focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow placeholder:text-slate-400"
                       placeholder="Leave blank to keep current password"
                     />
                     <p className="text-xs text-slate-500 mt-2">
@@ -454,7 +454,7 @@ export default function AccountsClient({ accounts }: Props) {
                   <button
                     type="submit"
                     disabled={isPending}
-                    className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 flex items-center gap-2 disabled:opacity-60"
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center gap-2 disabled:opacity-60"
                   >
                     <span>Save Changes</span>
                     <svg className="w-4 h-4 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">

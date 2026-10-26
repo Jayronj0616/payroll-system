@@ -48,11 +48,11 @@ export default function OwnerSidebar({ username }: Props) {
         <div className="px-5 py-6 border-b border-slate-800">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center font-bold text-lg">
+              <div className="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center font-bold text-lg">
                 P
               </div>
               <span className="text-lg font-semibold text-white tracking-tight">
-                Payroll<span className="text-indigo-400">Pro</span>
+                Payroll<span className="text-blue-400">Pro</span>
               </span>
             </div>
             <button
@@ -80,7 +80,7 @@ export default function OwnerSidebar({ username }: Props) {
                 onClick={() => setIsOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   active
-                    ? "bg-indigo-600 text-white"
+                    ? "bg-blue-600 text-white"
                     : "text-slate-300 hover:bg-slate-800 hover:text-white"
                 }`}
               >

@@ -164,7 +164,7 @@ export default function EmployeesClient({ employees, groups, accountName, isDemo
           id="tour-add-employee-btn"
           type="button"
           onClick={openCreate}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-colors flex items-center gap-2"
+          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-colors flex items-center gap-2"
         >
           <svg fill="none" className="w-5 h-5" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -189,7 +189,7 @@ export default function EmployeesClient({ employees, groups, accountName, isDemo
           onClick={() => setStatusTab("active")}
           className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all outline-none ${
             statusTab === "active"
-              ? "bg-white shadow text-indigo-700"
+              ? "bg-white shadow text-blue-700"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
           }`}
         >
@@ -200,7 +200,7 @@ export default function EmployeesClient({ employees, groups, accountName, isDemo
           onClick={() => setStatusTab("inactive")}
           className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all outline-none ${
             statusTab === "inactive"
-              ? "bg-white shadow text-indigo-700"
+              ? "bg-white shadow text-blue-700"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
           }`}
         >
@@ -248,7 +248,7 @@ export default function EmployeesClient({ employees, groups, accountName, isDemo
                         <button
                           type="button"
                           onClick={openCreate}
-                          className="text-indigo-600 mt-2 hover:underline font-medium"
+                          className="text-blue-600 mt-2 hover:underline font-medium"
                         >
                           Add the first one
                         </button>
@@ -286,7 +286,7 @@ export default function EmployeesClient({ employees, groups, accountName, isDemo
                         <button
                           type="button"
                           onClick={() => openEdit(employee)}
-                          className="text-indigo-500 hover:text-indigo-700 font-medium transition-colors"
+                          className="text-blue-500 hover:text-blue-700 font-medium transition-colors"
                         >
                           Edit
                         </button>
@@ -362,7 +362,7 @@ export default function EmployeesClient({ employees, groups, accountName, isDemo
                       value={modal.name}
                       onChange={(e) => handleNameChange(e.target.value)}
                       required
-                      className="w-full rounded-lg border-slate-300 border focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow placeholder:text-slate-400"
+                      className="w-full rounded-lg border-slate-300 border focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow placeholder:text-slate-400"
                       placeholder="e.g. ARIEL"
                     />
                   </div>
@@ -377,7 +377,7 @@ export default function EmployeesClient({ employees, groups, accountName, isDemo
                       id="voice_code"
                       value={modal.voiceCode}
                       onChange={(e) => setModal((prev) => ({ ...prev, voiceCode: e.target.value }))}
-                      className="w-full rounded-lg border-slate-300 border focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow placeholder:text-slate-400 uppercase"
+                      className="w-full rounded-lg border-slate-300 border focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow placeholder:text-slate-400 uppercase"
                       placeholder="e.g. MANGO"
                     />
                     <p className="text-xs text-slate-500 mt-2">
@@ -397,7 +397,7 @@ export default function EmployeesClient({ employees, groups, accountName, isDemo
                         setModal((prev) => ({ ...prev, payrollGroupId: parseInt(e.target.value, 10) }))
                       }
                       required
-                      className="w-full rounded-lg border-slate-300 border focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow"
+                      className="w-full rounded-lg border-slate-300 border focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow"
                     >
                       {groups.length === 0 && (
                         <option value="" disabled>
@@ -433,7 +433,7 @@ export default function EmployeesClient({ employees, groups, accountName, isDemo
                         value={modal.dailyRate}
                         onChange={(e) => setModal((prev) => ({ ...prev, dailyRate: e.target.value }))}
                         required
-                        className="w-full rounded-lg border-slate-300 border font-mono block pl-8 focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow placeholder:text-slate-400 font-medium"
+                        className="w-full rounded-lg border-slate-300 border font-mono block pl-8 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow placeholder:text-slate-400 font-medium"
                         placeholder="0.00"
                       />
                     </div>
@@ -451,7 +451,7 @@ export default function EmployeesClient({ employees, groups, accountName, isDemo
                   <button
                     type="submit"
                     disabled={isPending}
-                    className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 flex items-center gap-2 disabled:opacity-60"
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center gap-2 disabled:opacity-60"
                   >
                     <span>{modal.editMode ? "Save Changes" : "Create Employee"}</span>
                     <svg className="w-4 h-4 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">

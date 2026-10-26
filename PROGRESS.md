@@ -58,6 +58,12 @@ See `HANDOFF.md` in this same directory for how to get filesystem access to this
 - [x] Login button (`components/LoginModal.tsx`) now shows a spinning icon alongside the existing "Signing in..." text/disabled state while the login Server Action is in flight.
 - [ ] Not yet manually confirmed by Jay Ron: login spinner renders correctly, and the app-wide spinner is visible during navigation (may be too fast to see locally against Supabase — more noticeable on deployed Vercel latency).
 
+## Done — Performance pass + UI refresh — 2026-10-26
+
+Performance: payroll save is one batched upsert (was 2 queries per employee); dashboard totals come from the `dashboard_stats` SQL function (migration 008, run 2026-10-26); payrolls page selects only needed columns; SweetAlert2 loads on first use (`lib/swal.ts`); Vercel functions run in `sin1` next to Supabase (`vercel.json`); `app/loading.tsx` gives instant navigation feedback; Compute Entry rows are a memoized `EntryRow` so typing re-renders one row instead of the whole table.
+
+UI: new landing page (`components/landing/`, server-rendered, CSS-only animations), indigo → blue across the app, Poppins replaces Inter, pill-style active links in `NavBar`. `/` now renders without the app shell even with a session cookie — `middleware.ts` forwards `x-pathname` and `app/layout.tsx` reads it.
+
 ## Build status
 
 - [x] `npm run build` passes clean (fixed a TS strictness error in `lib/session.ts` — `crypto.subtle.verify`'s `BufferSource` param vs a newer `@types` `Uint8Array` generic; cast only, no runtime behavior change)

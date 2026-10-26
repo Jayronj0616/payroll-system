@@ -26,36 +26,36 @@ export default function NavBar({ username, role }: Props) {
   }
 
   function linkClass(active: boolean) {
-    return `transition-colors ${
-      active ? "text-indigo-600 font-medium" : "text-slate-500 hover:text-indigo-600"
+    return `rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+      active ? "bg-blue-50 text-blue-700" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
     }`;
   }
 
   return (
     <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="container mx-auto px-4 py-3 flex items-center justify-between max-w-[1800px]">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center font-bold text-lg">
+          <div className="w-9 h-9 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold text-lg shadow-md shadow-blue-600/20">
             P
           </div>
           <Link href="/dashboard" className="text-xl font-semibold text-slate-900 tracking-tight">
-            Payroll<span className="text-indigo-600">Pro</span>
+            Payroll<span className="text-blue-600">Pro</span>
           </Link>
         </div>
 
         {/* NavBar only ever renders for tenant sessions now — owner gets
             OwnerSidebar instead (see app/layout.tsx) — so these links are
             safe to show unconditionally for admin/staff. */}
-        <div className="hidden md:flex items-center space-x-6">
+        <div className="hidden md:flex items-center gap-1">
           {NAV_LINKS.map((item) => (
             <Link key={item.href} href={item.href} className={linkClass(isActive(item.href))}>
               {item.label}
             </Link>
           ))}
 
-          <div className="h-6 w-px bg-slate-200" />
+          <div className="mx-3 h-6 w-px bg-slate-200" />
 
-          <span className="text-sm text-slate-500 hidden sm:inline">{username}</span>
+          <span className="mr-3 text-sm text-slate-500 hidden sm:inline">{username}</span>
           <form action={logout}>
             <button
               type="submit"
@@ -84,7 +84,7 @@ export default function NavBar({ username, role }: Props) {
 
       {isOpen && (
         <div className="md:hidden border-t border-slate-200 px-4 py-3 space-y-3">
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
             {NAV_LINKS.map((item) => (
               <Link
                 key={item.href}

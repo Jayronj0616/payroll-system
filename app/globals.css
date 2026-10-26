@@ -5,10 +5,10 @@
 @tailwind utilities;
 
 /* Demo tour overrides — intro.js ships light-only default styling; match
-   this app's indigo/slate palette instead of the library's default blue. */
+   this app's blue/slate palette instead of the library's default blue. */
 .introjs-tooltip {
   border-radius: 0.75rem;
-  font-family: var(--font-inter), "Inter", sans-serif;
+  font-family: var(--font-sans), "Poppins", sans-serif;
   max-width: 340px;
 }
 .introjs-tooltiptext {
@@ -19,7 +19,7 @@
   background-color: #e2e8f0;
 }
 .introjs-progressbar {
-  background-color: #4f46e5;
+  background-color: #2563eb;
 }
 .introjs-button {
   border-radius: 0.5rem;
@@ -27,21 +27,21 @@
 }
 .introjs-nextbutton,
 .introjs-donebutton {
-  background: #4f46e5 !important;
-  border-color: #4f46e5 !important;
+  background: #2563eb !important;
+  border-color: #2563eb !important;
   color: #fff !important;
 }
 .introjs-nextbutton:hover,
 .introjs-donebutton:hover {
-  background: #4338ca !important;
-  border-color: #4338ca !important;
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
 }
 .introjs-helperNumberLayer {
-  background: #4f46e5;
+  background: #2563eb;
 }
 
 body {
-  font-family: var(--font-inter), "Inter", sans-serif;
+  font-family: var(--font-sans), "Poppins", sans-serif;
 }
 
 [x-cloak] {

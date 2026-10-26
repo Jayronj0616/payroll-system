@@ -3,11 +3,16 @@
 import { useState, useTransition } from "react";
 import { login } from "@/app/actions/auth";
 
+const DEFAULT_BUTTON_CLASS =
+  "bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm transition-colors";
+
 type Props = {
-  autoOpen: boolean;
+  autoOpen?: boolean;
+  label?: string;
+  buttonClassName?: string;
 };
 
-export default function LoginModal({ autoOpen }: Props) {
+export default function LoginModal({ autoOpen = false, label = "Sign In", buttonClassName = DEFAULT_BUTTON_CLASS }: Props) {
   const [isOpen, setIsOpen] = useState(autoOpen);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -32,9 +37,9 @@ export default function LoginModal({ autoOpen }: Props) {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm transition-colors"
+        className={buttonClassName}
       >
-        Sign In
+        {label}
       </button>
 
       {isOpen && (
@@ -78,7 +83,7 @@ export default function LoginModal({ autoOpen }: Props) {
                     required
                     autoFocus
                     autoComplete="username"
-                    className="w-full rounded-lg border-slate-300 border focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow"
+                    className="w-full rounded-lg border-slate-300 border focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow"
                   />
                 </div>
 
@@ -92,14 +97,14 @@ export default function LoginModal({ autoOpen }: Props) {
                     id="password"
                     required
                     autoComplete="current-password"
-                    className="w-full rounded-lg border-slate-300 border focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow"
+                    className="w-full rounded-lg border-slate-300 border focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-4 py-2 text-slate-800 transition-shadow"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm transition-colors px-5 py-2.5 disabled:opacity-60 flex items-center justify-center gap-2"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-sm transition-colors px-5 py-2.5 disabled:opacity-60 flex items-center justify-center gap-2"
                 >
                   {isPending && (
                     <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">

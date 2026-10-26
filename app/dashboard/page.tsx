@@ -71,11 +71,11 @@ export default async function DashboardPage() {
       iconColor: "text-slate-500",
       valueColor: "text-slate-700",
     },
-    indigo: {
-      border: "border-indigo-200",
-      iconBg: "bg-indigo-50",
-      iconColor: "text-indigo-600",
-      valueColor: "text-indigo-700",
+    blue: {
+      border: "border-blue-200",
+      iconBg: "bg-blue-50",
+      iconColor: "text-blue-600",
+      valueColor: "text-blue-700",
     },
     amber: {
       border: "border-amber-200",
@@ -132,7 +132,7 @@ export default async function DashboardPage() {
     {
       label: "Total salaries paid (all-time)",
       value: `₱${formatCurrency(totalSalaries)}`,
-      theme: "indigo",
+      theme: "blue",
       icon: "wallet",
     },
     {
@@ -185,7 +185,7 @@ export default async function DashboardPage() {
       <div id="tour-dashboard-actions" className="mt-8 flex gap-3">
         <a
           href="/payrolls"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-colors flex items-center gap-2"
+          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-colors flex items-center gap-2"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path

@@ -9,8 +9,13 @@ const PUBLIC_PATHS = new Set(["/"]);
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Forward the path so app/layout.tsx can render "/" without the app shell.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
+  const next = () => NextResponse.next({ request: { headers: requestHeaders } });
+
   if (PUBLIC_PATHS.has(pathname)) {
-    return NextResponse.next();
+    return next();
   }
 
   // Cron routes have no session cookie at all — Vercel's scheduler calls
@@ -18,7 +23,7 @@ export async function middleware(request: NextRequest) {
   // They're still protected, just by their own CRON_SECRET check inside
   // the route handler instead of this cookie gate.
   if (pathname.startsWith("/api/cron/")) {
-    return NextResponse.next();
+    return next();
   }
 
   const cookieValue = request.cookies.get(SESSION_COOKIE_NAME)?.value;
@@ -31,7 +36,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.next();
+  return next();
 }
 
 // Runs on every request except Next's own static/image assets.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { fireSwal } from "@/lib/swal";
 import { Employee, PayrollGroup, groupColor } from "@/lib/employee";
@@ -58,6 +58,113 @@ function formatCurrency(value: number): string {
     maximumFractionDigits: 2,
   }).format(value || 0);
 }
+
+type RowField = "days" | "ot" | "ca";
+
+function rowOtPay(row: RowState): number {
+  const ot = parseFloat(row.ot) || 0;
+  return (row.rate / 8) * ot;
+}
+
+function rowTotal(row: RowState): number {
+  const days = parseFloat(row.days) || 0;
+  const ca = parseFloat(row.ca) || 0;
+  return row.rate * days + rowOtPay(row) - ca;
+}
+
+// One Compute Entry row. Memoized so typing in one row re-renders only that
+// row, not every employee in every group.
+const EntryRow = memo(function EntryRow({
+  row,
+  isHighlighted,
+  totalClass,
+  onChange,
+}: {
+  row: RowState;
+  isHighlighted: boolean;
+  totalClass: string;
+  onChange: (id: number, field: RowField, value: string) => void;
+}) {
+  return (
+    <tr
+      id={`employee-row-${row.id}`}
+      className={`transition-colors focus-within:bg-blue-50/20 ${
+        isHighlighted
+          ? "bg-emerald-50 hover:bg-emerald-50"
+          : "hover:bg-slate-50"
+      }`}
+    >
+      <td className="px-6 py-3">
+        <div className="font-bold text-slate-800 rounded-md px-3 py-2 flex items-center justify-between gap-3 min-h-10 shadow-sm border border-slate-200 bg-slate-100/60">
+          <div className="flex flex-col gap-1">
+            <span>{row.name}</span>
+            {row.voiceCode && (
+              <span className="text-[11px] font-semibold tracking-wide text-rose-700">
+                Voice code: {row.voiceCode}
+              </span>
+            )}
+          </div>
+          {isHighlighted && (
+            <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold bg-emerald-100 text-emerald-700">
+              Voice Updated
+            </span>
+          )}
+        </div>
+      </td>
+      <td className="px-6 py-3">
+        <div className="font-mono font-medium text-slate-700 rounded-md px-3 py-2 text-right flex items-center justify-end h-10 shadow-sm border border-slate-200 bg-slate-100/60">
+          {formatCurrency(row.rate)}
+        </div>
+      </td>
+      <td className="px-6 py-3">
+        <input
+          type="number"
+          step="0.5"
+          min="0"
+          value={row.days}
+          onChange={(e) => onChange(row.id, "days", e.target.value)}
+          className="w-full rounded-md border-slate-300 border focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-center font-mono shadow-sm transition-shadow h-10 placeholder:text-slate-300"
+          placeholder="0"
+        />
+      </td>
+      <td className="px-6 py-3">
+        <input
+          type="number"
+          step="0.5"
+          min="0"
+          value={row.ot}
+          onChange={(e) => onChange(row.id, "ot", e.target.value)}
+          className="w-full rounded-md border-slate-300 border focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-center font-mono shadow-sm transition-shadow h-10 placeholder:text-slate-300"
+          placeholder="0"
+        />
+      </td>
+      <td className="px-6 py-3">
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          value={row.ca}
+          onChange={(e) => onChange(row.id, "ca", e.target.value)}
+          className="w-full rounded-md border-slate-300 border focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-center font-mono shadow-sm transition-shadow h-10 placeholder:text-slate-300"
+          placeholder="0"
+        />
+      </td>
+      <td className="px-6 py-3 text-right">
+        <span className="font-mono font-medium text-emerald-600">
+          {formatCurrency(rowOtPay(row))}
+        </span>
+      </td>
+      <td className="px-6 py-3 text-right">
+        <span
+          className={`font-mono font-bold ${rowTotal(row) < 0 ? "text-rose-600" : totalClass}`}
+        >
+          {formatCurrency(rowTotal(row))}
+        </span>
+      </td>
+    </tr>
+  );
+});
+
 
 function formatDateLabel(dateStr: string | null): string | null {
   if (!dateStr) return null;
@@ -499,17 +606,6 @@ export default function PayrollsClient({
     return rows.filter((r) => r.groupId === groupId);
   }
 
-  function rowOtPay(row: RowState): number {
-    const ot = parseFloat(row.ot) || 0;
-    return (row.rate / 8) * ot;
-  }
-
-  function rowTotal(row: RowState): number {
-    const days = parseFloat(row.days) || 0;
-    const ca = parseFloat(row.ca) || 0;
-    return row.rate * days + rowOtPay(row) - ca;
-  }
-
   function groupOvertime(groupId: number): number {
     return getEmployeesByGroup(groupId).reduce((sum, r) => sum + rowOtPay(r), 0);
   }
@@ -520,9 +616,11 @@ export default function PayrollsClient({
 
   const grandTotal = useMemo(() => rows.reduce((sum, r) => sum + rowTotal(r), 0), [rows]);
 
-  function updateRow(id: number, field: "days" | "ot" | "ca", value: string) {
+  // Stable identity so memoized EntryRow components skip re-rendering when
+  // a different row changes.
+  const updateRow = useCallback((id: number, field: RowField, value: string) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
-  }
+  }, []);
 
   function hasEntry(row: RowState): boolean {
     return (
@@ -596,7 +694,7 @@ export default function PayrollsClient({
             onClick={() => setActiveTab("compute")}
             className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 outline-none ${
               activeTab === "compute"
-                ? "bg-white shadow text-indigo-700"
+                ? "bg-white shadow text-blue-700"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
             }`}
           >
@@ -615,7 +713,7 @@ export default function PayrollsClient({
             onClick={() => setActiveTab("history")}
             className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 outline-none ${
               activeTab === "history"
-                ? "bg-white shadow text-indigo-700"
+                ? "bg-white shadow text-blue-700"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
             }`}
           >
@@ -647,7 +745,7 @@ export default function PayrollsClient({
                   value={payrollDate}
                   onChange={(e) => setPayrollDate(e.target.value)}
                   required
-                  className="w-full rounded-lg border-slate-300 py-2.5 px-3 focus:ring-indigo-200 focus:border-indigo-500 text-sm"
+                  className="w-full rounded-lg border-slate-300 py-2.5 px-3 focus:ring-blue-200 focus:border-blue-500 text-sm"
                 />
                 <p className="text-xs text-slate-500 mt-2">
                   This date is used for history filtering and grouped salary reports.
@@ -668,10 +766,10 @@ export default function PayrollsClient({
                 );
               })}
 
-              <div className="bg-indigo-50 rounded-xl shadow-sm border border-indigo-200 p-5">
-                <p className="text-sm font-medium text-indigo-700">Overall Payroll Total</p>
-                <p className="text-2xl font-bold text-indigo-800 mt-3">{formatCurrency(grandTotal)}</p>
-                <p className="text-xs text-indigo-600 mt-2">Combined total for all employees on the selected date.</p>
+              <div className="bg-blue-50 rounded-xl shadow-sm border border-blue-200 p-5">
+                <p className="text-sm font-medium text-blue-700">Overall Payroll Total</p>
+                <p className="text-2xl font-bold text-blue-800 mt-3">{formatCurrency(grandTotal)}</p>
+                <p className="text-xs text-blue-600 mt-2">Combined total for all employees on the selected date.</p>
               </div>
             </div>
 
@@ -716,7 +814,7 @@ export default function PayrollsClient({
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur px-4 py-4 sm:px-5 sm:py-5 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 sm:px-5 sm:py-5 shadow-sm">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Voice Status</p>
@@ -766,7 +864,7 @@ export default function PayrollsClient({
               <button
                 type="submit"
                 disabled={isSaving}
-                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all flex items-center gap-2 disabled:opacity-60"
+                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all flex items-center gap-2 disabled:opacity-60"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -832,7 +930,7 @@ export default function PayrollsClient({
                             <th className="px-6 py-4 font-semibold text-center">Overtime Hours</th>
                             <th className="px-6 py-4 font-semibold text-center">Cash Advance</th>
                             <th className="px-6 py-4 font-semibold text-right text-emerald-600">Overtime Pay</th>
-                            <th className="px-6 py-4 font-semibold text-right text-indigo-600">Total Salary</th>
+                            <th className="px-6 py-4 font-semibold text-right text-blue-600">Total Salary</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -844,83 +942,13 @@ export default function PayrollsClient({
                             </tr>
                           ) : (
                             groupRows.map((row) => (
-                              <tr
+                              <EntryRow
                                 key={row.id}
-                                id={`employee-row-${row.id}`}
-                                className={`transition-colors focus-within:bg-indigo-50/20 ${
-                                  highlightedEmployeeId === row.id
-                                    ? "bg-emerald-50 hover:bg-emerald-50"
-                                    : "hover:bg-slate-50"
-                                }`}
-                              >
-                                <td className="px-6 py-3">
-                                  <div className="font-bold text-slate-800 rounded-md px-3 py-2 flex items-center justify-between gap-3 min-h-10 shadow-sm border border-slate-200 bg-slate-100/60">
-                                    <div className="flex flex-col gap-1">
-                                      <span>{row.name}</span>
-                                      {row.voiceCode && (
-                                        <span className="text-[11px] font-semibold tracking-wide text-rose-700">
-                                          Voice code: {row.voiceCode}
-                                        </span>
-                                      )}
-                                    </div>
-                                    {highlightedEmployeeId === row.id && (
-                                      <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold bg-emerald-100 text-emerald-700">
-                                        Voice Updated
-                                      </span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-3">
-                                  <div className="font-mono font-medium text-slate-700 rounded-md px-3 py-2 text-right flex items-center justify-end h-10 shadow-sm border border-slate-200 bg-slate-100/60">
-                                    {formatCurrency(row.rate)}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-3">
-                                  <input
-                                    type="number"
-                                    step="0.5"
-                                    min="0"
-                                    value={row.days}
-                                    onChange={(e) => updateRow(row.id, "days", e.target.value)}
-                                    className="w-full rounded-md border-slate-300 border focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-3 py-2 text-center font-mono shadow-sm transition-shadow h-10 placeholder:text-slate-300"
-                                    placeholder="0"
-                                  />
-                                </td>
-                                <td className="px-6 py-3">
-                                  <input
-                                    type="number"
-                                    step="0.5"
-                                    min="0"
-                                    value={row.ot}
-                                    onChange={(e) => updateRow(row.id, "ot", e.target.value)}
-                                    className="w-full rounded-md border-slate-300 border focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-3 py-2 text-center font-mono shadow-sm transition-shadow h-10 placeholder:text-slate-300"
-                                    placeholder="0"
-                                  />
-                                </td>
-                                <td className="px-6 py-3">
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={row.ca}
-                                    onChange={(e) => updateRow(row.id, "ca", e.target.value)}
-                                    className="w-full rounded-md border-slate-300 border focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-3 py-2 text-center font-mono shadow-sm transition-shadow h-10 placeholder:text-slate-300"
-                                    placeholder="0"
-                                  />
-                                </td>
-                                <td className="px-6 py-3 text-right">
-                                  <span className="font-mono font-medium text-emerald-600">
-                                    {formatCurrency(rowOtPay(row))}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-3 text-right">
-                                  <span
-                                    className={`font-mono font-bold ${rowTotal(row) < 0 ? "text-rose-600" : color.solidText}`}
-                                  >
-                                    {formatCurrency(rowTotal(row))}
-                                  </span>
-                                </td>
-                              </tr>
+                                row={row}
+                                isHighlighted={highlightedEmployeeId === row.id}
+                                totalClass={color.solidText}
+                                onChange={updateRow}
+                              />
                             ))
                           )}
                         </tbody>
@@ -995,7 +1023,7 @@ export default function PayrollsClient({
               <button
                 type="submit"
                 disabled={isSaving}
-                className="w-full px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                className="w-full px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1032,7 +1060,7 @@ export default function PayrollsClient({
                 type="date"
                 value={historyDateInput}
                 onChange={(e) => setHistoryDateInput(e.target.value)}
-                className="rounded-lg border-slate-300 py-2.5 px-3 focus:ring-indigo-200 focus:border-indigo-500 text-sm"
+                className="rounded-lg border-slate-300 py-2.5 px-3 focus:ring-blue-200 focus:border-blue-500 text-sm"
               />
               <button
                 type="submit"
@@ -1044,7 +1072,7 @@ export default function PayrollsClient({
               <button
                 type="button"
                 onClick={() => startHistoryTransition(() => router.push("/payrolls?tab=history"))}
-                className="text-slate-500 hover:text-indigo-600 font-medium text-sm transition-colors"
+                className="text-slate-500 hover:text-blue-600 font-medium text-sm transition-colors"
               >
                 Latest Saved Date
               </button>
@@ -1053,7 +1081,7 @@ export default function PayrollsClient({
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center">
-              <div className="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mr-4">
+              <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mr-4">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
@@ -1098,8 +1126,8 @@ export default function PayrollsClient({
               );
             })}
 
-            <div className="bg-white rounded-xl shadow-sm border border-indigo-200 p-6 flex items-center">
-              <div className="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mr-4">
+            <div className="bg-white rounded-xl shadow-sm border border-blue-200 p-6 flex items-center">
+              <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mr-4">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
@@ -1111,7 +1139,7 @@ export default function PayrollsClient({
               </div>
               <div>
                 <p className="text-sm font-medium text-slate-500 mb-1">Overall Total Salary</p>
-                <p className="text-2xl font-bold text-indigo-700">{historySummary.total_salary.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-blue-700">{historySummary.total_salary.toFixed(2)}</p>
                 <p className="text-xs text-slate-500 mt-1">{historySummary.record_count} saved record(s)</p>
               </div>
             </div>
@@ -1197,7 +1225,7 @@ export default function PayrollsClient({
                               <th className="px-6 py-4 font-semibold text-right">OT Hours</th>
                               <th className="px-6 py-4 font-semibold text-right">Cash Advance</th>
                               <th className="px-6 py-4 font-semibold text-right text-emerald-600">OT Pay</th>
-                              <th className="px-6 py-4 font-semibold text-right text-indigo-600">Total Salary</th>
+                              <th className="px-6 py-4 font-semibold text-right text-blue-600">Total Salary</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
@@ -1320,7 +1348,7 @@ export default function PayrollsClient({
                 type="button"
                 onClick={confirmAndSave}
                 disabled={isSaving}
-                className="px-5 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm disabled:opacity-60"
+                className="px-5 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm disabled:opacity-60"
               >
                 {isSaving ? "Saving..." : "Confirm & Save"}
               </button>

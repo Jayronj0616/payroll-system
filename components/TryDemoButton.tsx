@@ -11,7 +11,15 @@ import { DEMO_USERNAME, DEMO_PASSWORD } from "@/lib/demo";
 // show them). That's an accepted tradeoff for a shared, seed-data-only
 // demo account that resets on a schedule — not for anything sensitive.
 
-export default function TryDemoButton() {
+const DEFAULT_CLASS =
+  "bg-white/10 hover:bg-white/20 border border-white/20 text-white font-medium py-2.5 px-5 rounded-lg transition-colors disabled:opacity-60 flex items-center gap-2";
+
+type Props = {
+  className?: string;
+  label?: string;
+};
+
+export default function TryDemoButton({ className = DEFAULT_CLASS, label = "Try Demo" }: Props) {
   const [isPending, startTransition] = useTransition();
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -38,7 +46,7 @@ export default function TryDemoButton() {
       <button
         type="submit"
         disabled={isPending}
-        className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-medium py-2.5 px-5 rounded-lg transition-colors disabled:opacity-60 flex items-center gap-2"
+        className={className}
       >
         {isPending && (
           <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -57,7 +65,7 @@ export default function TryDemoButton() {
             />
           </svg>
         )}
-        {isPending ? "Loading demo..." : "Try Demo"}
+        {isPending ? "Loading demo..." : label}
       </button>
     </form>
   );
