@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { login } from "@/app/actions/auth";
 
 const DEFAULT_BUTTON_CLASS =
@@ -16,6 +17,11 @@ export default function LoginModal({ autoOpen = false, label = "Sign In", button
   const [isOpen, setIsOpen] = useState(autoOpen);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // document.body doesn't exist during server rendering, so the portal waits
+  // for the first client render.
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => setIsMounted(true), []);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -42,7 +48,9 @@ export default function LoginModal({ autoOpen = false, label = "Sign In", button
         {label}
       </button>
 
-      {isOpen && (
+      {/* Portaled to <body>: the trigger can sit inside an animated wrapper,
+          and a transformed ancestor would trap this fixed overlay inside it. */}
+      {isOpen && isMounted && createPortal(
         <div className="fixed inset-0 z-[100] overflow-y-auto" role="dialog" aria-modal="true">
           <div className="flex items-center justify-center min-h-screen px-4 py-8">
             <div
@@ -128,7 +136,8 @@ export default function LoginModal({ autoOpen = false, label = "Sign In", button
               </form>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
