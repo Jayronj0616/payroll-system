@@ -201,7 +201,7 @@ All open questions resolved — ready to build.
 ## Done — Single Cash Advance field (all accounts) — 2026-09-09
 
 `cash_advance_lea` / `cash_advance_bitoy` retired app-wide in favor of one `cash_advance` field — the Lea/Bitoy split was specific to Jay Ron's original business, not a general concept. `lib/employee.ts` (`calculatePayroll`, `Payroll` type), `app/payrolls/actions.ts`, `app/payrolls/PayrollsClient.tsx` (compute entry, confirm modal, history), and the demo reset route all updated; `npm run build` clean. Old columns kept in the DB as a rollback safety net, not dropped.
-- [ ] **Jay Ron: run `supabase/migrations/007-single-cash-advance.sql`** in the Supabase SQL Editor — adds `cash_advance` and backfills it from the two old columns. Not yet run.
+- [x] **Jay Ron: run `supabase/migrations/007-single-cash-advance.sql`** in the Supabase SQL Editor — adds `cash_advance` and backfills it from the two old columns. Confirmed applied 2026-11-20 (`payrolls.cash_advance` readable via REST).
 
 ## Needs verification / open items (carried over, unchanged by this session)
 
