@@ -5,6 +5,7 @@ import "./globals.css";
 import NavBar from "@/components/NavBar";
 import OwnerSidebar from "@/components/OwnerSidebar";
 import DemoBanner from "@/components/DemoBanner";
+import AnalyticsScript from "@/components/AnalyticsScript";
 import { SESSION_COOKIE_NAME, verifySessionCookieValue } from "@/lib/session";
 import { DEMO_USERNAME } from "@/lib/demo";
 
@@ -52,6 +53,7 @@ export default async function RootLayout({
           </>
         )}
         {!showShell && children}
+        <AnalyticsScript />
       </body>
     </html>
   );

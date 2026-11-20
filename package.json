@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@openpanel/nextjs": "^1.5.3",
     "@supabase/supabase-js": "^2.45.4",
     "bcryptjs": "^2.4.3",
     "intro.js": "^8.5.0",

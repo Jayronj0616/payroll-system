@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { createSessionCookieValue, SESSION_COOKIE_NAME } from "@/lib/session";
+import { PENDING_EVENT_COOKIE, type PendingEvent } from "@/lib/analytics/events";
 
 export type LoginState = {
   error: string | null;
@@ -61,6 +62,19 @@ export async function login(formData: FormData): Promise<LoginState> {
   // tour=1 field so the demo visitor lands on the tour instead of a
   // plain dashboard. Real logins never send this field.
   const startTour = formData.get("tour") === "1";
+
+  // redirect() below means the browser never sees a success state, so queue the
+  // analytics event in a short-lived cookie for AnalyticsScript to report.
+  const event: PendingEvent = startTour ? "demo_started" : "login_succeeded";
+  if (process.env.NEXT_PUBLIC_OPENPANEL_CLIENT_ID) {
+    cookies().set(PENDING_EVENT_COOKIE, event, {
+      path: "/",
+      maxAge: 60,
+      httpOnly: false,
+      sameSite: "lax",
+    });
+  }
+
   redirect(startTour ? "/dashboard?tour=1" : "/dashboard");
 }
 

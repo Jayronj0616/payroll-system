@@ -39,7 +39,9 @@ export async function middleware(request: NextRequest) {
   return next();
 }
 
-// Runs on every request except Next's own static/image assets.
+// Runs on every request except Next's own static/image assets and api/op, the
+// first-party OpenPanel proxy: anonymous visitors hit it, and the session gate
+// would otherwise redirect their analytics requests to the landing page.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/op(?:/|$)).*)"],
 };
